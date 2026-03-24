@@ -1,0 +1,47 @@
+[
+  {
+    "id": "rookie",
+    "name": "The Rookie",
+    "hp": 100,
+    "stamina": 100,
+    "passive_id": "none",
+    "passive_description": "No passive — pure skill",
+    "unlocked": true
+  },
+  {
+    "id": "grandmaster",
+    "name": "The Grandmaster",
+    "hp": 70,
+    "stamina": 120,
+    "passive_id": "chess_time_bonus_20",
+    "passive_description": "Starts with +20s chess time",
+    "unlocked": false
+  },
+  {
+    "id": "brawler",
+    "name": "The Brawler",
+    "hp": 130,
+    "stamina": 80,
+    "passive_id": "jab_bonus_1",
+    "passive_description": "Jabs deal +1 damage",
+    "unlocked": false
+  },
+  {
+    "id": "hustler",
+    "name": "The Hustler",
+    "hp": 100,
+    "stamina": 100,
+    "passive_id": "see_first_move",
+    "passive_description": "Sees opponent's first boxing move for free",
+    "unlocked": false
+  },
+  {
+    "id": "prodigy",
+    "name": "The Prodigy",
+    "hp": 60,
+    "stamina": 130,
+    "passive_id": "chess_bonus_1_5x",
+    "passive_description": "Chess Bonus effects are 1.5x",
+    "unlocked": false
+  }
+]

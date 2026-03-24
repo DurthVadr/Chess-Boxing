@@ -1,0 +1,110 @@
+[
+  {
+    "id": "scholars_gambit",
+    "name": "Scholar's Gambit",
+    "type": "chess",
+    "description": "+15s time on all puzzles",
+    "effect": "chess_time_bonus",
+    "value": 15,
+    "rarity": "common"
+  },
+  {
+    "id": "bishops_blessing",
+    "name": "Bishop's Blessing",
+    "type": "chess",
+    "description": "First wrong move doesn't count",
+    "effect": "free_mistake",
+    "value": 1,
+    "rarity": "uncommon"
+  },
+  {
+    "id": "iron_jaw",
+    "name": "Iron Jaw",
+    "type": "boxing",
+    "description": "Reduce all incoming damage by 1",
+    "effect": "damage_reduction",
+    "value": 1,
+    "rarity": "common"
+  },
+  {
+    "id": "haymaker",
+    "name": "Haymaker",
+    "type": "boxing",
+    "description": "Uppercuts cost 50% less stamina",
+    "effect": "uppercut_stamina_discount",
+    "value": 0.5,
+    "rarity": "uncommon"
+  },
+  {
+    "id": "mind_over_muscle",
+    "name": "Mind Over Muscle",
+    "type": "hybrid",
+    "description": "Chess Bonus effects are doubled",
+    "effect": "chess_bonus_multiplier",
+    "value": 2.0,
+    "rarity": "rare"
+  },
+  {
+    "id": "rope_a_dope",
+    "name": "Rope-a-Dope",
+    "type": "hybrid",
+    "description": "Blocking grants +5s chess time next round",
+    "effect": "block_chess_time",
+    "value": 5,
+    "rarity": "uncommon"
+  },
+  {
+    "id": "blitz_mode",
+    "name": "Blitz Mode",
+    "type": "wild",
+    "description": "Puzzle time halved, but Chess Bonus tripled",
+    "effect": "blitz",
+    "value": 3.0,
+    "rarity": "rare"
+  },
+  {
+    "id": "second_wind",
+    "name": "Second Wind",
+    "type": "boxing",
+    "description": "Once per fight, recover 30% HP when below 10%",
+    "effect": "second_wind",
+    "value": 0.3,
+    "rarity": "rare"
+  },
+  {
+    "id": "zugzwang",
+    "name": "Zugzwang",
+    "type": "chess",
+    "description": "Solve puzzle in <10s: opponent loses a boxing turn",
+    "effect": "fast_solve_skip_turn",
+    "value": 10,
+    "rarity": "rare"
+  },
+  {
+    "id": "quick_hands",
+    "name": "Quick Hands",
+    "type": "boxing",
+    "description": "Jabs deal +2 damage",
+    "effect": "jab_damage_bonus",
+    "value": 2,
+    "rarity": "common"
+  },
+  {
+    "id": "endurance",
+    "name": "Endurance",
+    "type": "boxing",
+    "description": "+20 max stamina",
+    "effect": "max_stamina_bonus",
+    "value": 20,
+    "rarity": "common"
+  },
+  {
+    "id": "time_pressure",
+    "name": "Time Pressure",
+    "type": "hybrid",
+    "description": "Each second remaining on puzzle timer = +1 bonus damage",
+    "effect": "time_to_damage",
+    "value": 1,
+    "rarity": "uncommon"
+  }
+]

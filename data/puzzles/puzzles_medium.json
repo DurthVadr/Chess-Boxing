@@ -1,0 +1,42 @@
+[
+  {
+    "id": "puzzle_101",
+    "fen": "r1b1k2r/ppppqppp/2n2n2/2b5/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 6 5",
+    "solution": ["c3d5", "f6d5", "e4d5"],
+    "themes": ["combination", "sacrifice"],
+    "difficulty": 3,
+    "description": "Knight sacrifice to win the center"
+  },
+  {
+    "id": "puzzle_102",
+    "fen": "r2q1rk1/ppp1bppp/2n1bn2/3pp3/8/1BN1PN2/PPPP1PPP/R1BQ1RK1 w - - 0 8",
+    "solution": ["c3d5", "e6d5", "b3d5"],
+    "themes": ["combination", "positional"],
+    "difficulty": 3,
+    "description": "Exchange and recapture to dominate the center"
+  },
+  {
+    "id": "puzzle_103",
+    "fen": "r1bq1rk1/pp3ppp/2n1pn2/2pp4/1bPP4/2NBPN2/PP3PPP/R1BQ1RK1 w - - 0 8",
+    "solution": ["c4d5", "e6d5", "d3h7"],
+    "themes": ["sacrifice", "attacking", "greek_gift"],
+    "difficulty": 4,
+    "description": "Greek Gift sacrifice — Bishop takes h7+"
+  },
+  {
+    "id": "puzzle_104",
+    "fen": "r4rk1/pp1bqppp/2n1p3/2ppP3/3P4/2PB1N2/PP3PPP/R1BQ1RK1 w - - 0 11",
+    "solution": ["d3h7"],
+    "themes": ["sacrifice", "attacking"],
+    "difficulty": 3,
+    "description": "Classic bishop sacrifice on h7"
+  },
+  {
+    "id": "puzzle_105",
+    "fen": "2rq1rk1/pp2ppbp/2n3p1/3pP3/3P4/2N2N2/PP2BPPP/R1BQ1RK1 w - - 0 10",
+    "solution": ["f3g5", "e7e6", "e2h5"],
+    "themes": ["attacking", "combination"],
+    "difficulty": 4,
+    "description": "Knight to g5 launching a kingside attack"
+  }
+]

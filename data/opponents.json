@@ -1,0 +1,38 @@
+[
+  {
+    "id": "opponent_1",
+    "name": "Vinnie 'The Pawn' Kowalski",
+    "archetype": "brawler",
+    "hp": 60,
+    "stamina": 80,
+    "damage_mod": 0.8,
+    "defense_mod": 0.8,
+    "chess_difficulty": 1,
+    "flavor_text": "A loudmouth from Brooklyn who learned chess last Tuesday. Hits hard but thinks harder... wait, no, he doesn't think at all.",
+    "puzzle_themes": ["mateIn1", "fork", "short"]
+  },
+  {
+    "id": "opponent_2",
+    "name": "Elena 'The Bishop' Petrov",
+    "archetype": "technician",
+    "hp": 80,
+    "stamina": 90,
+    "damage_mod": 1.0,
+    "defense_mod": 1.0,
+    "chess_difficulty": 3,
+    "flavor_text": "Former chess prodigy turned amateur boxer. Reads your patterns like an open book. Good luck.",
+    "puzzle_themes": ["combination", "positional", "sacrifice"]
+  },
+  {
+    "id": "opponent_3",
+    "name": "Magnus 'The Grandmaster' Thunderfist",
+    "archetype": "boss",
+    "hp": 100,
+    "stamina": 100,
+    "damage_mod": 1.2,
+    "defense_mod": 1.2,
+    "chess_difficulty": 5,
+    "flavor_text": "The reigning champion. They say he solved a mate-in-7 while getting punched in the face. He didn't flinch.",
+    "puzzle_themes": ["deep_calculation", "quiet_move", "endgame", "sacrifice"]
+  }
+]

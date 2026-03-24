@@ -1,0 +1,191 @@
+[gd_scene load_steps=2 format=3 uid="uid://boxing_phase"]
+
+[ext_resource type="Script" path="res://scenes/boxing_phase/boxing_phase.gd" id="1"]
+
+[node name="BoxingPhase" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.06, 0.06, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 15.0
+offset_top = 8.0
+offset_right = -15.0
+offset_bottom = 40.0
+grow_horizontal = 2
+
+[node name="PhaseLabel" type="Label" parent="TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.9, 0.3, 0.3, 1)
+text = "🥊 BOXING ROUND"
+
+[node name="BonusLabel" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = ""
+horizontal_alignment = 2
+
+[node name="Arena" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.1
+anchor_right = 0.95
+anchor_bottom = 0.55
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="PlayerPanel" type="VBoxContainer" parent="Arena"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PlayerNameLabel" type="Label" parent="Arena/PlayerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Player"
+horizontal_alignment = 1
+
+[node name="PlayerSprite" type="ColorRect" parent="Arena/PlayerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 160)
+size_flags_horizontal = 4
+color = Color(0.2, 0.4, 0.8, 1)
+
+[node name="PlayerHPBar" type="ProgressBar" parent="Arena/PlayerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 16)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="PlayerHPLabel" type="Label" parent="Arena/PlayerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "HP: 100/100"
+horizontal_alignment = 1
+
+[node name="PlayerStaminaBar" type="ProgressBar" parent="Arena/PlayerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="VSLabel" type="Label" parent="Arena"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+theme_override_colors/font_color = Color(0.9, 0.78, 0.3, 1)
+text = "VS"
+vertical_alignment = 1
+
+[node name="OpponentPanel" type="VBoxContainer" parent="Arena"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="OpponentNameLabel" type="Label" parent="Arena/OpponentPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Opponent"
+horizontal_alignment = 1
+
+[node name="OpponentSprite" type="ColorRect" parent="Arena/OpponentPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 160)
+size_flags_horizontal = 4
+color = Color(0.8, 0.2, 0.2, 1)
+
+[node name="OpponentHPBar" type="ProgressBar" parent="Arena/OpponentPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 16)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="OpponentHPLabel" type="Label" parent="Arena/OpponentPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "HP: 80/80"
+horizontal_alignment = 1
+
+[node name="OpponentStaminaBar" type="ProgressBar" parent="Arena/OpponentPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="TelegraphLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.56
+anchor_right = 0.5
+offset_left = -200.0
+offset_right = 200.0
+offset_bottom = 25.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.9, 0.6, 0.2, 1)
+text = "..."
+horizontal_alignment = 1
+
+[node name="BottomSection" type="HSplitContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.62
+anchor_right = 0.98
+anchor_bottom = 0.98
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CombatLog" type="RichTextLabel" parent="BottomSection"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(400, 0)
+bbcode_enabled = true
+text = "The fight begins!
+"
+scroll_following = true
+
+[node name="ActionContainer" type="GridContainer" parent="BottomSection"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(320, 0)
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8

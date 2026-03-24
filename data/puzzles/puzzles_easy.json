@@ -1,0 +1,82 @@
+[
+  {
+    "id": "puzzle_001",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+    "solution": ["h5f7"],
+    "themes": ["mateIn1", "sacrifice"],
+    "difficulty": 1,
+    "description": "Scholar's Mate — Queen takes f7"
+  },
+  {
+    "id": "puzzle_002",
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+    "solution": ["d8h4"],
+    "themes": ["mateIn1", "short"],
+    "difficulty": 1,
+    "description": "Fool's Mate — Queen to h4"
+  },
+  {
+    "id": "puzzle_003",
+    "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4",
+    "solution": ["f6e4"],
+    "themes": ["fork", "tactical"],
+    "difficulty": 1,
+    "description": "Knight fork — Knight takes e4 attacking queen and bishop"
+  },
+  {
+    "id": "puzzle_004",
+    "fen": "r2qkb1r/ppp2ppp/2n1bn2/3pp3/4P3/1B3N2/PPPP1PPP/RNBQ1RK1 w kq - 4 5",
+    "solution": ["f3e5"],
+    "themes": ["fork", "tactical"],
+    "difficulty": 1,
+    "description": "Knight captures e5 — Fork on c6 and f7"
+  },
+  {
+    "id": "puzzle_005",
+    "fen": "rnb1kbnr/ppppqppp/8/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 3",
+    "solution": ["c4f7"],
+    "themes": ["pin", "tactical"],
+    "difficulty": 2,
+    "description": "Bishop takes f7+ — Exploiting the pinned queen"
+  },
+  {
+    "id": "puzzle_006",
+    "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+    "solution": ["f1b5"],
+    "themes": ["pin", "opening"],
+    "difficulty": 1,
+    "description": "Ruy Lopez — Bishop pins the knight"
+  },
+  {
+    "id": "puzzle_007",
+    "fen": "r1bqr1k1/ppp2ppp/2n2n2/3p4/1b1P4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 1 7",
+    "solution": ["f1d3"],
+    "themes": ["development", "positional"],
+    "difficulty": 2,
+    "description": "Develop the bishop — Bd3 controls key squares"
+  },
+  {
+    "id": "puzzle_008",
+    "fen": "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
+    "solution": ["e1e8"],
+    "themes": ["mateIn1", "backRank"],
+    "difficulty": 1,
+    "description": "Back rank mate — Rook delivers checkmate"
+  },
+  {
+    "id": "puzzle_009",
+    "fen": "r1bqk2r/ppppbppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    "solution": ["c4f7"],
+    "themes": ["sacrifice", "attacking"],
+    "difficulty": 2,
+    "description": "Sacrifice on f7 — Open up the king"
+  },
+  {
+    "id": "puzzle_010",
+    "fen": "r1bqkbnr/1ppp1ppp/p1n5/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+    "solution": ["a4c6"],
+    "themes": ["capture", "tactical"],
+    "difficulty": 1,
+    "description": "Bishop takes knight — Win material"
+  }
+]

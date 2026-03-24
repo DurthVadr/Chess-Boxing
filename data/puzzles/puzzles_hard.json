@@ -1,0 +1,42 @@
+[
+  {
+    "id": "puzzle_201",
+    "fen": "r1bq1rk1/pp2ppbp/2np2p1/8/3NP3/2N1BP2/PPPQ2PP/R3KB1R w KQ - 1 9",
+    "solution": ["d4e6", "f7e6", "d2d6"],
+    "themes": ["sacrifice", "deep_calculation"],
+    "difficulty": 4,
+    "description": "Knight sacrifice to open the f-file"
+  },
+  {
+    "id": "puzzle_202",
+    "fen": "r2qr1k1/pb2bppp/1pn1pn2/2p5/2P5/1PN1PN2/PB2BPPP/R2Q1RK1 w - - 0 10",
+    "solution": ["e3e4", "c6d4", "f3d4", "c5d4", "e4e5"],
+    "themes": ["positional", "quiet_move", "endgame"],
+    "difficulty": 5,
+    "description": "Quiet pawn advance — Positional squeeze"
+  },
+  {
+    "id": "puzzle_203",
+    "fen": "6k1/pp3pp1/2p4p/4P3/1P2B3/P4P2/5KPP/3r4 w - - 0 28",
+    "solution": ["e4c6", "d1d2", "f2e3"],
+    "themes": ["endgame", "defense"],
+    "difficulty": 5,
+    "description": "Endgame technique — Bishop defends and counterattacks"
+  },
+  {
+    "id": "puzzle_204",
+    "fen": "r1bq1rk1/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQ1RK1 w - - 0 5",
+    "solution": ["c1g5", "h7h6", "g5h4", "g7g5", "h4g3"],
+    "themes": ["positional", "quiet_move"],
+    "difficulty": 5,
+    "description": "Positional pin and retreat — Long-term pressure"
+  },
+  {
+    "id": "puzzle_205",
+    "fen": "r5k1/1p3ppp/p2q1n2/3p4/3P4/1QN2P2/PP4PP/R5K1 w - - 0 20",
+    "solution": ["c3d5", "f6d5", "b3d5"],
+    "themes": ["tactical", "zwischenzug"],
+    "difficulty": 4,
+    "description": "Exchange with tempo — Zwischenzug idea"
+  }
+]
