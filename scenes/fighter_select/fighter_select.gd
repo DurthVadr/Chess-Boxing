@@ -12,11 +12,11 @@ var selected_fighter: Dictionary = {}
 var fighter_cards: Array[Button] = []
 
 const CARD_COLORS := {
-	"rookie": Color(0.3, 0.5, 0.3),
-	"grandmaster": Color(0.3, 0.3, 0.6),
-	"brawler": Color(0.6, 0.25, 0.25),
-	"hustler": Color(0.5, 0.4, 0.2),
-	"prodigy": Color(0.45, 0.25, 0.55),
+	"rookie": Color(0.25, 0.45, 0.3),
+	"grandmaster": Color(0.25, 0.32, 0.52),
+	"brawler": Color(0.52, 0.25, 0.22),
+	"hustler": Color(0.48, 0.38, 0.2),
+	"prodigy": Color(0.4, 0.25, 0.5),
 }
 
 func _ready() -> void:
@@ -27,12 +27,17 @@ func _ready() -> void:
 
 func _build_fighter_cards() -> void:
 	for fighter in GameManager.all_fighters:
-		if not fighter.get("unlocked", false):
-			continue
+		var fighter_id: String = fighter.get("id", "")
+		var is_unlocked := SaveManager.is_fighter_unlocked(fighter_id)
 
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(200, 260)
-		card.text = fighter.name
+
+		if is_unlocked:
+			card.text = fighter.get("name", "???")
+		else:
+			card.text = "LOCKED\n" + fighter.get("name", "???")
+			card.disabled = true
 
 		var style := StyleBoxFlat.new()
 		style.bg_color = CARD_COLORS.get(fighter.id, Color(0.3, 0.3, 0.3))

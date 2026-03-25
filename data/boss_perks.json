@@ -1,0 +1,37 @@
+[
+  {
+    "id": "boss_prep",
+    "name": "Grandmaster's Prep",
+    "description": "+1.0 Heat equivalent on all attacks",
+    "effect": "boss_damage_bonus",
+    "values": {"damage": 3}
+  },
+  {
+    "id": "boss_castling",
+    "name": "Castling",
+    "description": "Block restores 5 HP",
+    "effect": "boss_block_heal",
+    "values": {"hp": 5}
+  },
+  {
+    "id": "boss_promotion",
+    "name": "Promotion",
+    "description": "All attacks deal +3 after round 3",
+    "effect": "boss_late_damage",
+    "values": {"damage": 3, "round_threshold": 3}
+  },
+  {
+    "id": "boss_kings_guard",
+    "name": "King's Guard",
+    "description": "25% damage reduction",
+    "effect": "boss_damage_reduction",
+    "values": {"reduction": 0.25}
+  },
+  {
+    "id": "boss_endgame_vision",
+    "name": "Endgame Vision",
+    "description": "Reads your Action 1 before choosing his Action 2",
+    "effect": "boss_read_action",
+    "values": {}
+  }
+]

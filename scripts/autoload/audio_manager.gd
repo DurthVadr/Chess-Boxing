@@ -1,7 +1,7 @@
 extends Node
 
-## Simple audio manager for SFX playback
-## Music is out of scope for MVP, but the structure is here for later
+## SFX playback manager — uses the "SFX" audio bus
+## Music is handled separately by MusicManager autoload
 
 var sfx_players: Array[AudioStreamPlayer] = []
 const MAX_SFX_PLAYERS := 8
@@ -10,7 +10,7 @@ func _ready() -> void:
 	# Pre-create a pool of AudioStreamPlayers for SFX
 	for i in MAX_SFX_PLAYERS:
 		var player := AudioStreamPlayer.new()
-		player.bus = "Master"
+		player.bus = "SFX"
 		add_child(player)
 		sfx_players.append(player)
 

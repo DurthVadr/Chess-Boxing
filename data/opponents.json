@@ -9,7 +9,30 @@
     "defense_mod": 0.8,
     "chess_difficulty": 1,
     "flavor_text": "A loudmouth from Brooklyn who learned chess last Tuesday. Hits hard but thinks harder... wait, no, he doesn't think at all.",
-    "puzzle_themes": ["mateIn1", "fork", "short"]
+    "puzzle_themes": ["mateIn1", "fork", "short"],
+    "gimmick": null,
+    "fight_position": 1,
+    "path": "both"
+  },
+  {
+    "id": "opponent_suki",
+    "name": "Suki 'The Knight' Tanaka",
+    "archetype": "glass_cannon",
+    "hp": 50,
+    "stamina": 110,
+    "damage_mod": 1.3,
+    "defense_mod": 0.6,
+    "chess_difficulty": 2,
+    "flavor_text": "Moves like an L-shaped nightmare. You never see her coming — but you always feel her leaving.",
+    "puzzle_themes": ["fork", "tactical", "combination"],
+    "gimmick": {
+      "type": "l_shaped_combos",
+      "name": "L-Shaped",
+      "description": "Her combos alternate attack and movement (attack+dodge or dodge+attack). Predictable but deadly.",
+      "bonus_damage": 5
+    },
+    "fight_position": 2,
+    "path": "both"
   },
   {
     "id": "opponent_2",
@@ -21,7 +44,36 @@
     "defense_mod": 1.0,
     "chess_difficulty": 3,
     "flavor_text": "Former chess prodigy turned amateur boxer. Reads your patterns like an open book. Good luck.",
-    "puzzle_themes": ["combination", "positional", "sacrifice"]
+    "puzzle_themes": ["combination", "positional", "sacrifice"],
+    "gimmick": {
+      "type": "scaling_damage",
+      "name": "Diagonal Thinking",
+      "description": "Gains +2 damage every round regardless of chess performance. Outpace her or get overwhelmed.",
+      "per_round": 2
+    },
+    "fight_position": 3,
+    "path": "elena"
+  },
+  {
+    "id": "opponent_marcus",
+    "name": "Marcus 'The Rook' Williams",
+    "archetype": "turtle",
+    "hp": 120,
+    "stamina": 70,
+    "damage_mod": 0.7,
+    "defense_mod": 1.4,
+    "chess_difficulty": 2,
+    "flavor_text": "Built like a castle wall. You can hit him all day and he'll still be standing. Patient. Inevitable.",
+    "puzzle_themes": ["endgame", "positional", "defense"],
+    "gimmick": {
+      "type": "fortress",
+      "name": "Fortress",
+      "description": "Cannot be KO'd by a single hit (min 1 HP). Blocking heals him for 2 HP. Wear him down with combos.",
+      "min_hp_from_hit": 1,
+      "block_heal": 2
+    },
+    "fight_position": 3,
+    "path": "marcus"
   },
   {
     "id": "opponent_3",
@@ -33,6 +85,14 @@
     "defense_mod": 1.2,
     "chess_difficulty": 5,
     "flavor_text": "The reigning champion. They say he solved a mate-in-7 while getting punched in the face. He didn't flinch.",
-    "puzzle_themes": ["deep_calculation", "quiet_move", "endgame", "sacrifice"]
+    "puzzle_themes": ["deep_calculation", "quiet_move", "endgame", "sacrifice"],
+    "gimmick": {
+      "type": "perk_drafter",
+      "name": "Adaptation",
+      "description": "Magnus drafts a perk before each boxing round. By the final round, he has a build. You're in an arms race.",
+      "boss_perk_pool": ["boss_prep", "boss_castling", "boss_promotion", "boss_kings_guard", "boss_endgame_vision"]
+    },
+    "fight_position": 5,
+    "path": "both"
   }
 ]

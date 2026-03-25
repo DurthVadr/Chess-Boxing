@@ -1,0 +1,12 @@
+[
+  {"id": "first_win", "name": "Contender", "description": "Win a full tournament run", "condition": "win_run", "unlock_type": "fighter", "unlock_id": "grandmaster"},
+  {"id": "speed_demon", "name": "Speed Demon", "description": "Solve a puzzle in under 5 seconds", "condition": "fastest_puzzle_under_5", "unlock_type": "fighter", "unlock_id": "hustler"},
+  {"id": "iron_man", "name": "Iron Man", "description": "Win a fight taking less than 10 total damage", "condition": "low_damage_fight", "unlock_type": "fighter", "unlock_id": "brawler"},
+  {"id": "prodigy_unlock", "name": "Chess Prodigy", "description": "Reach 4.5x Heat or higher", "condition": "high_heat", "unlock_type": "fighter", "unlock_id": "prodigy"},
+  {"id": "glass_jaw", "name": "Glass Jaw", "description": "Win a run without ever blocking", "condition": "no_blocks", "unlock_type": "perk", "unlock_id": "glass_cannon"},
+  {"id": "chess_master", "name": "Chess Master", "description": "Complete a run with 0 puzzle mistakes", "condition": "zero_mistakes", "unlock_type": "perk", "unlock_id": "grandmasters_eye"},
+  {"id": "sacrifice_everything", "name": "Sacrifice Everything", "description": "Win a run with 3+ sacrifice-tagged perks", "condition": "sacrifice_build", "unlock_type": "perk", "unlock_id": "blood_sacrifice"},
+  {"id": "s_rank", "name": "S-Rank Fighter", "description": "Achieve an S rating or higher", "condition": "s_rating", "unlock_type": "perk", "unlock_id": "knockout_artist"},
+  {"id": "combo_king", "name": "Combo King", "description": "Land 10 named combos in a single run", "condition": "combo_count_10", "unlock_type": "perk", "unlock_id": "pile_driver"},
+  {"id": "arms_race", "name": "Arms Race", "description": "Defeat Magnus while he has 3+ perks", "condition": "beat_boss_with_perks", "unlock_type": "perk", "unlock_id": "flow_state"}
+]

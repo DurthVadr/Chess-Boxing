@@ -1,13 +1,16 @@
 class_name OpponentAI
 extends RefCounted
 
-## AI behavior for boxing opponents based on archetype
+## AI behavior for boxing opponents — picks 2-action sequences per turn.
+## Supports archetype-specific patterns and learnable telegraph tells.
 
 enum Archetype { BRAWLER, TECHNICIAN, TURTLE, GLASS_CANNON, BOSS }
 
 var archetype: Archetype = Archetype.BRAWLER
-var last_player_action: BoxingAction.ActionType = BoxingAction.ActionType.JAB
+var last_player_actions: Array = []  # Last [action1, action2] the player used
 var turn_count: int = 0
+var telegraph_data: Dictionary = {}  # Loaded from telegraphs.json
+var boss_round: int = 0  # Magnus phase tracking
 
 func setup(archetype_name: String) -> void:
 	match archetype_name:
@@ -18,150 +21,229 @@ func setup(archetype_name: String) -> void:
 		"boss": archetype = Archetype.BOSS
 		_: archetype = Archetype.BRAWLER
 
-func choose_action(opponent_hp_pct: float, opponent_stamina: int, player_hp_pct: float) -> BoxingAction.ActionType:
+func setup_telegraphs(opponent_id: String) -> void:
+	var all_telegraphs: Array = _load_telegraphs()
+	for t in all_telegraphs:
+		if t.get("opponent_id", "") == opponent_id:
+			telegraph_data = t
+			return
+
+func _load_telegraphs() -> Array:
+	var file := FileAccess.open("res://data/telegraphs.json", FileAccess.READ)
+	if file == null:
+		return []
+	var json := JSON.new()
+	if json.parse(file.get_as_text()) != OK:
+		return []
+	if json.data is Array:
+		return json.data
+	return []
+
+## Choose 2 actions for this turn. Returns [action1, action2].
+func choose_actions(opp_hp_pct: float, opp_stamina: int, player_hp_pct: float) -> Array:
 	turn_count += 1
 
-	# Need stamina to attack
-	if opponent_stamina < 10:
-		return BoxingAction.ActionType.CLINCH
-
-	var action: BoxingAction.ActionType
+	if opp_stamina < 10:
+		return [BoxingAction.ActionType.CLINCH, BoxingAction.ActionType.JAB]
 
 	match archetype:
 		Archetype.BRAWLER:
-			action = _brawler_ai(opponent_hp_pct, opponent_stamina)
+			return _brawler_actions(opp_hp_pct, opp_stamina)
 		Archetype.TECHNICIAN:
-			action = _technician_ai(opponent_hp_pct, opponent_stamina, player_hp_pct)
+			return _technician_actions(opp_hp_pct, opp_stamina, player_hp_pct)
 		Archetype.TURTLE:
-			action = _turtle_ai(opponent_hp_pct, opponent_stamina, player_hp_pct)
+			return _turtle_actions(opp_hp_pct, opp_stamina, player_hp_pct)
 		Archetype.GLASS_CANNON:
-			action = _glass_cannon_ai(opponent_hp_pct, opponent_stamina)
+			return _glass_cannon_actions(opp_hp_pct, opp_stamina)
 		Archetype.BOSS:
-			action = _boss_ai(opponent_hp_pct, opponent_stamina, player_hp_pct)
-		_:
-			action = _brawler_ai(opponent_hp_pct, opponent_stamina)
+			return _boss_actions(opp_hp_pct, opp_stamina, player_hp_pct)
 
-	return action
+	return [BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS]
 
+## Legacy single-action compat.
+func choose_action(opp_hp_pct: float, opp_stamina: int, player_hp_pct: float) -> BoxingAction.ActionType:
+	var actions := choose_actions(opp_hp_pct, opp_stamina, player_hp_pct)
+	return actions[0]
+
+## Get telegraph text for opponent's chosen actions.
+## Rolls honest_ratio — may feint (show wrong tell).
+func get_telegraph_for_actions(actions: Array) -> String:
+	if telegraph_data.is_empty():
+		return "Opponent is sizing you up..."
+
+	var honest_ratio: float = telegraph_data.get("honest_ratio", 1.0)
+
+	# Magnus: honest_ratio decays per round
+	if archetype == Archetype.BOSS:
+		honest_ratio = maxf(0.3, honest_ratio - boss_round * 0.15)
+
+	var first_action: BoxingAction.ActionType = actions[0]
+	var action_name := ComboSystem.action_to_string(first_action)
+
+	var tells: Dictionary = telegraph_data.get("tells", {})
+	var feint_pool: Array = telegraph_data.get("feint_pool", [])
+
+	if randf() < honest_ratio or feint_pool.is_empty():
+		# Honest tell
+		return tells.get(action_name, "...")
+	else:
+		# Feint — show a tell from the feint pool instead
+		var feint_action: String = feint_pool[randi() % feint_pool.size()]
+		return tells.get(feint_action, "...")
+
+## Legacy telegraph compat.
 func get_telegraph_hint(action: BoxingAction.ActionType) -> String:
-	match action:
-		BoxingAction.ActionType.JAB: return "Quick jab incoming..."
-		BoxingAction.ActionType.CROSS: return "Winding up a cross..."
-		BoxingAction.ActionType.HOOK: return "Setting up a hook!"
-		BoxingAction.ActionType.UPPERCUT: return "BIG windup — UPPERCUT!"
-		BoxingAction.ActionType.BLOCK: return "Getting defensive..."
-		BoxingAction.ActionType.DODGE: return "Looking to slip..."
-		BoxingAction.ActionType.CLINCH: return "Moving in to clinch..."
-	return "..."
+	return get_telegraph_for_actions([action])
+
+func record_player_actions(actions: Array) -> void:
+	last_player_actions = actions
 
 func record_player_action(action: BoxingAction.ActionType) -> void:
-	last_player_action = action
+	last_player_actions = [action]
 
-# --- Archetype AIs ---
+# =============================================================================
+# Archetype AIs — all return [Action1, Action2]
+# =============================================================================
 
-func _brawler_ai(hp_pct: float, stamina: int) -> BoxingAction.ActionType:
-	# Aggressive and predictable: mostly jabs and crosses, occasional hook
+func _brawler_actions(hp_pct: float, stamina: int) -> Array:
+	# Predictable aggression. No combo awareness. Tutorial opponent.
 	if stamina < 20:
-		return BoxingAction.ActionType.CLINCH
+		return [BoxingAction.ActionType.CLINCH, BoxingAction.ActionType.JAB]
 
-	var roll := randf()
 	if hp_pct < 0.3:
-		# Desperate — go for big hits
-		if roll < 0.4: return BoxingAction.ActionType.HOOK
-		if roll < 0.7: return BoxingAction.ActionType.UPPERCUT
-		return BoxingAction.ActionType.CROSS
+		# Desperate
+		return _pick_weighted([
+			[[BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT], 3],
+			[[BoxingAction.ActionType.CROSS, BoxingAction.ActionType.HOOK], 3],
+			[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS], 2],
+		])
 
-	if roll < 0.35: return BoxingAction.ActionType.JAB
-	if roll < 0.65: return BoxingAction.ActionType.CROSS
-	if roll < 0.85: return BoxingAction.ActionType.HOOK
-	return BoxingAction.ActionType.JAB
+	return _pick_weighted([
+		[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS], 4],
+		[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.JAB], 3],
+		[[BoxingAction.ActionType.CROSS, BoxingAction.ActionType.HOOK], 2],
+		[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.HOOK], 1],
+	])
 
-func _technician_ai(hp_pct: float, stamina: int, player_hp_pct: float) -> BoxingAction.ActionType:
-	# Adapts to player — counters their last move
+func _technician_actions(hp_pct: float, stamina: int, player_hp_pct: float) -> Array:
+	# Deliberate combos. Counter-plays player's last combo.
 	if stamina < 20:
-		return BoxingAction.ActionType.BLOCK
+		return [BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.BLOCK]
 
-	# Counter-play based on last player action
-	match last_player_action:
-		BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT:
-			if randf() < 0.6: return BoxingAction.ActionType.DODGE
-		BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.CLINCH:
-			if randf() < 0.5: return BoxingAction.ActionType.HOOK  # Punish passivity
-		BoxingAction.ActionType.JAB:
-			if randf() < 0.4: return BoxingAction.ActionType.CROSS  # Trade up
+	# Counter-play based on player's last actions
+	if not last_player_actions.is_empty():
+		var last1: BoxingAction.ActionType = last_player_actions[0]
+		# If player was aggressive, dodge then counter
+		if ComboSystem.is_attack(last1):
+			if randf() < 0.5:
+				return [BoxingAction.ActionType.DODGE, BoxingAction.ActionType.CROSS]
+		# If player was defensive, punish
+		if last1 == BoxingAction.ActionType.BLOCK or last1 == BoxingAction.ActionType.CLINCH:
+			if randf() < 0.5:
+				return [BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT]
 
-	# Default balanced play
-	if player_hp_pct < 0.3 and stamina >= 30:
-		return BoxingAction.ActionType.UPPERCUT  # Finish them
+	# Finisher
+	if player_hp_pct < 0.25 and stamina >= 30:
+		return [BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT]
 
-	var roll := randf()
-	if roll < 0.3: return BoxingAction.ActionType.JAB
-	if roll < 0.55: return BoxingAction.ActionType.CROSS
-	if roll < 0.75: return BoxingAction.ActionType.BLOCK
-	return BoxingAction.ActionType.HOOK
+	return _pick_weighted([
+		[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS], 3],
+		[[BoxingAction.ActionType.DODGE, BoxingAction.ActionType.CROSS], 3],
+		[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.HOOK], 2],
+		[[BoxingAction.ActionType.CROSS, BoxingAction.ActionType.HOOK], 2],
+	])
 
-func _turtle_ai(hp_pct: float, stamina: int, player_hp_pct: float) -> BoxingAction.ActionType:
-	# Very defensive — blocks a lot, waits for counter opportunities
+func _turtle_actions(hp_pct: float, stamina: int, _player_hp_pct: float) -> Array:
+	# Very defensive. BLOCK+BLOCK is signature. Counter-punches.
 	if stamina < 15:
-		return BoxingAction.ActionType.CLINCH
+		return [BoxingAction.ActionType.CLINCH, BoxingAction.ActionType.BLOCK]
 
-	# If player just used a big attack, counter
-	if last_player_action == BoxingAction.ActionType.UPPERCUT or last_player_action == BoxingAction.ActionType.HOOK:
-		if randf() < 0.5: return BoxingAction.ActionType.CROSS
-
-	# Mostly block
-	var roll := randf()
 	if hp_pct > 0.5:
-		if roll < 0.45: return BoxingAction.ActionType.BLOCK
-		if roll < 0.65: return BoxingAction.ActionType.JAB
-		if roll < 0.80: return BoxingAction.ActionType.DODGE
-		return BoxingAction.ActionType.CROSS
+		return _pick_weighted([
+			[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.BLOCK], 4],
+			[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.CROSS], 3],
+			[[BoxingAction.ActionType.DODGE, BoxingAction.ActionType.JAB], 2],
+			[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.BLOCK], 1],
+		])
 	else:
-		# More aggressive when low HP
-		if roll < 0.25: return BoxingAction.ActionType.BLOCK
-		if roll < 0.50: return BoxingAction.ActionType.CROSS
-		if roll < 0.70: return BoxingAction.ActionType.HOOK
-		return BoxingAction.ActionType.JAB
+		# More aggressive when low
+		return _pick_weighted([
+			[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.HOOK], 3],
+			[[BoxingAction.ActionType.CROSS, BoxingAction.ActionType.CROSS], 2],
+			[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.BLOCK], 2],
+			[[BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT], 1],
+		])
 
-func _glass_cannon_ai(_hp_pct: float, stamina: int) -> BoxingAction.ActionType:
-	# All-out attack, rarely blocks
+func _glass_cannon_actions(_hp_pct: float, stamina: int) -> Array:
+	# All offense, no defense. L-shaped combos (alternate attack/defense).
 	if stamina < 10:
-		return BoxingAction.ActionType.CLINCH
+		return [BoxingAction.ActionType.CLINCH, BoxingAction.ActionType.UPPERCUT]
 
-	var roll := randf()
-	if roll < 0.25: return BoxingAction.ActionType.UPPERCUT
-	if roll < 0.50: return BoxingAction.ActionType.HOOK
-	if roll < 0.75: return BoxingAction.ActionType.CROSS
-	return BoxingAction.ActionType.JAB
+	return _pick_weighted([
+		[[BoxingAction.ActionType.DODGE, BoxingAction.ActionType.HOOK], 3],   # L-shape
+		[[BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT], 3],
+		[[BoxingAction.ActionType.CROSS, BoxingAction.ActionType.HOOK], 2],
+		[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.UPPERCUT], 2],
+		[[BoxingAction.ActionType.DODGE, BoxingAction.ActionType.UPPERCUT], 1], # L-shape
+	])
 
-func _boss_ai(hp_pct: float, stamina: int, player_hp_pct: float) -> BoxingAction.ActionType:
-	# Smart and dangerous — adapts, uses full toolkit
+func _boss_actions(hp_pct: float, stamina: int, player_hp_pct: float) -> Array:
+	# Smart and dangerous. Uses full combo awareness. Adapts per phase.
 	if stamina < 15:
-		if randf() < 0.5: return BoxingAction.ActionType.BLOCK
-		return BoxingAction.ActionType.CLINCH
+		if randf() < 0.5:
+			return [BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.BLOCK]
+		return [BoxingAction.ActionType.CLINCH, BoxingAction.ActionType.JAB]
 
-	# Phase 1: Controlled aggression
+	# Phase 1: Controlled (HP > 60%)
 	if hp_pct > 0.6:
-		match last_player_action:
-			BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT:
-				if randf() < 0.7: return BoxingAction.ActionType.DODGE
-			BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.CLINCH:
-				if randf() < 0.6: return BoxingAction.ActionType.UPPERCUT
+		# Counter-play
+		if not last_player_actions.is_empty():
+			var last1: BoxingAction.ActionType = last_player_actions[0]
+			if last1 == BoxingAction.ActionType.HOOK or last1 == BoxingAction.ActionType.UPPERCUT:
+				if randf() < 0.6:
+					return [BoxingAction.ActionType.DODGE, BoxingAction.ActionType.UPPERCUT]
 
-		var roll := randf()
-		if roll < 0.25: return BoxingAction.ActionType.CROSS
-		if roll < 0.45: return BoxingAction.ActionType.HOOK
-		if roll < 0.65: return BoxingAction.ActionType.JAB
-		if roll < 0.80: return BoxingAction.ActionType.BLOCK
-		return BoxingAction.ActionType.DODGE
+		return _pick_weighted([
+			[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS], 3],
+			[[BoxingAction.ActionType.DODGE, BoxingAction.ActionType.CROSS], 2],
+			[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.HOOK], 2],
+			[[BoxingAction.ActionType.CROSS, BoxingAction.ActionType.HOOK], 2],
+			[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.BLOCK], 1],
+		])
 
-	# Phase 2: Desperate but smart
-	if player_hp_pct < 0.3 and stamina >= 30:
-		return BoxingAction.ActionType.UPPERCUT
+	# Phase 2: Aggressive (HP 30-60%)
+	if hp_pct > 0.3:
+		if player_hp_pct < 0.25:
+			return [BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT]
 
-	var roll := randf()
-	if roll < 0.3: return BoxingAction.ActionType.HOOK
-	if roll < 0.5: return BoxingAction.ActionType.CROSS
-	if roll < 0.65: return BoxingAction.ActionType.DODGE
-	if roll < 0.80: return BoxingAction.ActionType.JAB
-	return BoxingAction.ActionType.BLOCK
+		return _pick_weighted([
+			[[BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT], 3],
+			[[BoxingAction.ActionType.CROSS, BoxingAction.ActionType.HOOK], 3],
+			[[BoxingAction.ActionType.DODGE, BoxingAction.ActionType.UPPERCUT], 2],
+			[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.HOOK], 2],
+		])
+
+	# Phase 3: Desperate but precise (HP < 30%)
+	return _pick_weighted([
+		[[BoxingAction.ActionType.DODGE, BoxingAction.ActionType.UPPERCUT], 4],
+		[[BoxingAction.ActionType.HOOK, BoxingAction.ActionType.UPPERCUT], 3],
+		[[BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.HOOK], 2],
+		[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS], 1],
+	])
+
+# =============================================================================
+# Utility
+# =============================================================================
+
+## Pick from weighted options. Each item is [value, weight].
+func _pick_weighted(options: Array) -> Array:
+	var total_weight := 0
+	for opt in options:
+		total_weight += opt[1]
+	var roll := randi() % total_weight
+	var cumulative := 0
+	for opt in options:
+		cumulative += opt[1]
+		if roll < cumulative:
+			return opt[0]
+	return options[0][0]

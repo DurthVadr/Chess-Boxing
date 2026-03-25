@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://run_results"]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scenes/results/run_results.gd" id="1"]
+[ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
 
 [node name="RunResults" type="Control"]
 layout_mode = 3
@@ -9,6 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2")
 script = ExtResource("1")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -18,7 +20,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.06, 0.06, 0.08, 1)
+color = Color(0.14, 0.28, 0.2, 1)
 
 [node name="ResultLabel" type="Label" parent="."]
 unique_name_in_owner = true
@@ -26,12 +28,12 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -250.0
-offset_top = 40.0
-offset_right = 250.0
+offset_left = -280.0
+offset_top = 35.0
+offset_right = 280.0
 offset_bottom = 110.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 52
 text = "RESULT"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -50,7 +52,7 @@ grow_vertical = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 10
 
 [node name="RetryBtn" type="Button" parent="."]
 unique_name_in_owner = true
@@ -60,11 +62,11 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -100.0
+offset_left = -120.0
 offset_top = -60.0
-offset_right = 100.0
+offset_right = 120.0
 offset_bottom = -15.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 24
 text = "TRY AGAIN"

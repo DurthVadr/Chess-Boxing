@@ -21,6 +21,11 @@ func _ready() -> void:
 	flavor_label.text = opp.get("flavor_text", "")
 	stats_label.text = "HP: %d  |  Stamina: %d" % [opp.get("hp", 80), opp.get("stamina", 90)]
 
+	# Show gimmick if present
+	var gimmick = opp.get("gimmick", null)
+	if gimmick is Dictionary and not gimmick.is_empty():
+		stats_label.text += "\n\n%s: %s" % [gimmick.get("name", ""), gimmick.get("description", "")]
+
 	# Card flip animation
 	card_panel.scale = Vector2(0.01, 1.0)
 	card_panel.pivot_offset = card_panel.size / 2.0

@@ -1,9 +1,9 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scenes/tournament/tournament_bracket.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/path_fork/path_fork.gd" id="1"]
 [ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
 
-[node name="TournamentBracket" type="Control"]
+[node name="PathFork" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -30,14 +30,14 @@ anchor_right = 0.5
 offset_left = -250.0
 offset_top = 25.0
 offset_right = 250.0
-offset_bottom = 80.0
+offset_bottom = 75.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 32
 theme_override_colors/font_color = Color(0.9, 0.78, 0.35, 1)
-text = "TOURNAMENT BRACKET"
+text = "CHOOSE YOUR PATH"
 horizontal_alignment = 1
 
-[node name="BracketContainer" type="VBoxContainer" parent="."]
+[node name="PathContainer" type="HBoxContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 8
@@ -45,27 +45,11 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -280.0
-offset_top = -100.0
-offset_right = 280.0
-offset_bottom = 100.0
+offset_left = -350.0
+offset_top = -120.0
+offset_right = 350.0
+offset_bottom = 120.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 15
-
-[node name="ProceedBtn" type="Button" parent="."]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -120.0
-offset_top = -58.0
-offset_right = 120.0
-offset_bottom = -15.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_font_sizes/font_size = 22
-text = "NEXT FIGHT"
+theme_override_constants/separation = 40
+alignment = 1

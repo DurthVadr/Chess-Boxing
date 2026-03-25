@@ -64,7 +64,8 @@ func get_piece_at(row: int, col: int) -> String:
 
 func get_piece_symbol(row: int, col: int) -> String:
 	var piece := get_piece_at(row, col)
-	return PIECE_SYMBOLS.get(piece, "")
+	var symbol: String = PIECE_SYMBOLS.get(piece, "")
+	return symbol
 
 func is_white_piece(piece: String) -> bool:
 	return piece != "" and piece == piece.to_upper()
@@ -100,7 +101,7 @@ func try_move(from_row: int, from_col: int, to_row: int, to_col: int) -> int:
 		return 0
 
 	var move_uci := coords_to_uci(from_row, from_col) + coords_to_uci(to_row, to_col)
-	var expected := solution_moves[current_solution_step]
+	var expected: String = solution_moves[current_solution_step]
 
 	if move_uci == expected:
 		# Execute the move on the board
@@ -123,7 +124,7 @@ func try_move(from_row: int, from_col: int, to_row: int, to_col: int) -> int:
 		return 0  # Wrong move
 
 func _execute_move(from_row: int, from_col: int, to_row: int, to_col: int) -> void:
-	var piece := board[from_row][from_col]
+	var piece: String = board[from_row][from_col]
 	board[from_row][from_col] = ""
 	board[to_row][to_col] = piece
 

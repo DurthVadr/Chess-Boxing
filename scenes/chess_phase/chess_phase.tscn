@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://chess_phase"]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scenes/chess_phase/chess_phase.gd" id="1"]
+[ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
 
 [node name="ChessPhase" type="Control"]
 layout_mode = 3
@@ -9,6 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2")
 script = ExtResource("1")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -18,7 +20,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.06, 0.08, 0.12, 1)
+color = Color(0.14, 0.28, 0.2, 1)
 
 [node name="TopBar" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -27,20 +29,21 @@ anchor_right = 1.0
 offset_left = 20.0
 offset_top = 10.0
 offset_right = -20.0
-offset_bottom = 60.0
+offset_bottom = 55.0
 grow_horizontal = 2
 
 [node name="PhaseLabel" type="Label" parent="TopBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(0.3, 0.5, 0.9, 1)
-text = "♟ CHESS ROUND"
+theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.4, 0.6, 0.85, 1)
+text = "CHESS ROUND"
 
 [node name="TimerLabel" type="Label" parent="TopBar"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 36
+theme_override_colors/font_color = Color(0.95, 0.92, 0.82, 1)
 text = "1:00"
 horizontal_alignment = 2
 
@@ -50,7 +53,7 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = 60.0
-offset_bottom = -120.0
+offset_bottom = -130.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -66,7 +69,7 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -115.0
+offset_top = -125.0
 offset_right = -20.0
 offset_bottom = -10.0
 grow_horizontal = 2
@@ -77,14 +80,15 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_colors/font_color = Color(0.55, 0.55, 0.6, 1)
 text = "Solve this puzzle!"
 horizontal_alignment = 1
 
 [node name="StatusLabel" type="Label" parent="BottomPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.95, 0.92, 0.82, 1)
 text = "Your move!"
 horizontal_alignment = 1
 
@@ -92,14 +96,14 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.8, 0.4, 0.4, 1)
+theme_override_colors/font_color = Color(0.75, 0.3, 0.3, 1)
 text = ""
 horizontal_alignment = 1
 
 [node name="BonusBar" type="ProgressBar" parent="BottomPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 12)
+custom_minimum_size = Vector2(0, 14)
 max_value = 100.0
 value = 100.0
 show_percentage = false

@@ -1,6 +1,6 @@
 extends Control
 
-## Tournament Bracket — Shows upcoming opponents
+## Tournament Bracket — Shows opponents in fight order
 
 @onready var bracket_container: VBoxContainer = %BracketContainer
 @onready var proceed_btn: Button = %ProceedBtn
@@ -11,33 +11,54 @@ func _ready() -> void:
 	Juice.fade_in(self, 0.4)
 
 func _build_bracket() -> void:
-	for i in GameManager.all_opponents.size():
-		var opp: Dictionary = GameManager.all_opponents[i]
+	# Show opponents from fight_order (only known ones)
+	var fight_order: Array = GameManager.fight_order
+
+	for i in fight_order.size():
+		var opp_id: String = fight_order[i]
+		var opp := GameManager._get_opponent_by_id(opp_id)
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 
 		var label := Label.new()
-		label.custom_minimum_size = Vector2(400, 50)
+		label.custom_minimum_size = Vector2(450, 50)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 		if i < GameManager.current_opponent_index:
-			# Already defeated
-			label.text = "✓ " + opp.name + " — DEFEATED"
-			label.add_theme_color_override("font_color", Color(0.3, 0.7, 0.3))
+			label.text = "✓ " + opp.get("name", "???") + " — DEFEATED"
+			label.add_theme_color_override("font_color", Color(0.35, 0.7, 0.38))
 		elif i == GameManager.current_opponent_index:
-			# Current fight
-			label.text = "► " + opp.name
-			label.add_theme_color_override("font_color", Color(0.9, 0.78, 0.3))
+			label.text = "► " + opp.get("name", "???")
+			label.add_theme_color_override("font_color", Color(0.9, 0.78, 0.35))
 			label.add_theme_font_size_override("font_size", 24)
 			Juice.scale_bounce(label, 1.05, 0.4)
 		else:
-			# Future — silhouette
 			label.text = "? ? ?"
-			label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
+			label.add_theme_color_override("font_color", Color(0.45, 0.45, 0.42))
 
 		row.add_child(label)
 		bracket_container.add_child(row)
+
+	# If path not chosen yet and we're past fight 2, show fork hint
+	if GameManager.chosen_path == "" and GameManager.current_opponent_index >= 2:
+		var fork_label := Label.new()
+		fork_label.text = "— PATH FORK AHEAD —"
+		fork_label.add_theme_font_size_override("font_size", 16)
+		fork_label.add_theme_color_override("font_color", Color(0.8, 0.65, 0.3))
+		fork_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bracket_container.add_child(fork_label)
+
+	# Always show boss at the end
+	if GameManager.chosen_path != "":
+		var remaining := fight_order.size() - GameManager.current_opponent_index
+		if remaining > 1:
+			var boss_label := Label.new()
+			boss_label.text = "... → FINAL BOSS"
+			boss_label.add_theme_font_size_override("font_size", 14)
+			boss_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.52))
+			boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			bracket_container.add_child(boss_label)
 
 func _on_proceed() -> void:
 	GameManager.start_fight()

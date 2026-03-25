@@ -21,11 +21,11 @@ var free_mistakes: int = 0
 var selected_square: Vector2i = Vector2i(-1, -1)
 var square_buttons: Array = []  # 2D array of buttons
 
-const LIGHT_SQUARE := Color(0.93, 0.89, 0.78)
-const DARK_SQUARE := Color(0.47, 0.36, 0.27)
-const SELECTED_COLOR := Color(0.9, 0.78, 0.3, 0.6)
-const WRONG_COLOR := Color(0.8, 0.2, 0.2, 0.5)
-const CORRECT_COLOR := Color(0.2, 0.8, 0.3, 0.5)
+const LIGHT_SQUARE := Color(0.82, 0.75, 0.62)
+const DARK_SQUARE := Color(0.45, 0.32, 0.22)
+const SELECTED_COLOR := Color(0.88, 0.78, 0.35, 0.65)
+const WRONG_COLOR := Color(0.82, 0.3, 0.25, 0.55)
+const CORRECT_COLOR := Color(0.35, 0.72, 0.38, 0.5)
 
 func _ready() -> void:
 	board_logic = ChessBoardLogic.new()
@@ -59,9 +59,10 @@ func _process(delta: float) -> void:
 	var seconds := int(time_remaining)
 	timer_label.text = "%d:%02d" % [seconds / 60, seconds % 60]
 
-	# Color timer based on urgency
+	# Color timer based on urgency + shift music intensity
 	if time_remaining < 10.0:
 		timer_label.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
+		MusicManager.shift_intensity("chess_tense")
 	elif time_remaining < 20.0:
 		timer_label.add_theme_color_override("font_color", Color(0.9, 0.7, 0.2))
 	else:
@@ -112,9 +113,9 @@ func _build_board() -> void:
 			# Color pieces
 			var piece := board_logic.get_piece_at(row, col)
 			if board_logic.is_white_piece(piece):
-				btn.add_theme_color_override("font_color", Color(1, 1, 1))
+				btn.add_theme_color_override("font_color", Color(0.95, 0.92, 0.82))
 			elif board_logic.is_black_piece(piece):
-				btn.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1))
+				btn.add_theme_color_override("font_color", Color(0.18, 0.14, 0.1))
 
 			btn.pressed.connect(_on_square_pressed.bind(row, col))
 			board_grid.add_child(btn)
@@ -130,11 +131,11 @@ func _refresh_board() -> void:
 
 			var piece := board_logic.get_piece_at(row, col)
 			if board_logic.is_white_piece(piece):
-				btn.add_theme_color_override("font_color", Color(1, 1, 1))
+				btn.add_theme_color_override("font_color", Color(0.95, 0.92, 0.82))
 			elif board_logic.is_black_piece(piece):
-				btn.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1))
+				btn.add_theme_color_override("font_color", Color(0.18, 0.14, 0.1))
 			else:
-				btn.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+				btn.add_theme_color_override("font_color", Color(0.5, 0.48, 0.42))
 
 			# Reset square color
 			var is_light := (row + col) % 2 == 0
@@ -231,9 +232,10 @@ func _on_correct_move() -> void:
 func _on_puzzle_solved() -> void:
 	is_active = false
 	var solve_time := (Time.get_ticks_msec() / 1000.0) - solve_start_time
-	GameManager.set_chess_result(true, time_remaining, solve_time)
+	var real_mistakes := maxi(0, mistakes - free_mistakes)
+	GameManager.set_chess_result(true, time_remaining, solve_time, real_mistakes)
 
-	status_label.text = ChessBonus.get_bonus_text(GameManager.chess_bonus)
+	status_label.text = HeatSystem.get_heat_text(GameManager.get_heat())
 	status_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.3))
 	Juice.punch_text(status_label)
 
@@ -245,11 +247,13 @@ func _on_puzzle_solved() -> void:
 
 func _on_puzzle_failed() -> void:
 	is_active = false
-	GameManager.set_chess_result(false, 0.0, time_limit)
+	var real_mistakes := maxi(0, mistakes - free_mistakes)
+	GameManager.set_chess_result(false, 0.0, time_limit, real_mistakes)
 
 	status_label.text = "Time's up! Opponent gets the bonus!"
 	status_label.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
 	Juice.screen_shake(self, 8.0, 0.3)
+	MusicManager.muffle(true, 0.3)
 
 	var tween := create_tween()
 	tween.tween_callback(_go_to_boxing).set_delay(2.0)

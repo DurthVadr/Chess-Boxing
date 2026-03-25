@@ -1,0 +1,72 @@
+[
+  {
+    "opponent_id": "opponent_1",
+    "honest_ratio": 1.0,
+    "tells": {
+      "JAB": "Drops left shoulder",
+      "CROSS": "Squares up, weight shifts",
+      "HOOK": "Widens stance, arm cocks back",
+      "UPPERCUT": "Dips low, knees bend",
+      "BLOCK": "Tucks chin, raises guard",
+      "DODGE": "Bounces on toes",
+      "CLINCH": "Leans forward, arms reaching"
+    },
+    "feint_pool": []
+  },
+  {
+    "opponent_id": "opponent_2",
+    "honest_ratio": 0.7,
+    "tells": {
+      "JAB": "Quick glance at your chin",
+      "CROSS": "Subtle weight shift right",
+      "HOOK": "Elbow lifts slightly",
+      "UPPERCUT": "Dips — or is it a feint?",
+      "BLOCK": "Eyes narrow, guard tightens",
+      "DODGE": "Feet shuffle laterally",
+      "CLINCH": "Steps inside your range"
+    },
+    "feint_pool": ["HOOK", "UPPERCUT"]
+  },
+  {
+    "opponent_id": "opponent_suki",
+    "honest_ratio": 0.8,
+    "tells": {
+      "JAB": "Flickers her lead hand",
+      "CROSS": "Pivots on back foot",
+      "HOOK": "Torso coils like a spring",
+      "UPPERCUT": "Drops low, explosive stance",
+      "BLOCK": "Shell guard, compact",
+      "DODGE": "Angles off-center",
+      "CLINCH": "Darts inside suddenly"
+    },
+    "feint_pool": ["JAB"]
+  },
+  {
+    "opponent_id": "opponent_marcus",
+    "honest_ratio": 0.9,
+    "tells": {
+      "JAB": "Lazy jab motion — testing",
+      "CROSS": "Plants feet, winds up slowly",
+      "HOOK": "Turns his whole body",
+      "UPPERCUT": "Crouches deep, long windup",
+      "BLOCK": "Settles into his guard like a wall",
+      "DODGE": "Barely moves — just leans",
+      "CLINCH": "Opens arms wide"
+    },
+    "feint_pool": []
+  },
+  {
+    "opponent_id": "opponent_3",
+    "honest_ratio": 0.8,
+    "tells": {
+      "JAB": "Calm, measured setup",
+      "CROSS": "Textbook weight transfer",
+      "HOOK": "Precise angle adjustment",
+      "UPPERCUT": "Controlled dip — calculating",
+      "BLOCK": "Perfect defensive posture",
+      "DODGE": "Minimal movement, maximum efficiency",
+      "CLINCH": "Closes distance methodically"
+    },
+    "feint_pool": ["HOOK", "UPPERCUT", "CROSS"]
+  }
+]

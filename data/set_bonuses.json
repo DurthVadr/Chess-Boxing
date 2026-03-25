@@ -1,0 +1,146 @@
+[
+  {
+    "id": "speed_2",
+    "tag": "speed",
+    "threshold": 2,
+    "name": "Quick Feet",
+    "effect": "jab_stamina_reduction",
+    "description": "Jabs cost 3 less stamina",
+    "values": {"stamina_reduction": 3}
+  },
+  {
+    "id": "speed_3",
+    "tag": "speed",
+    "threshold": 3,
+    "name": "Greased Lightning",
+    "effect": "jab_free",
+    "description": "Jabs cost 0 stamina",
+    "values": {}
+  },
+  {
+    "id": "power_2",
+    "tag": "power",
+    "threshold": 2,
+    "name": "Heavy Hands",
+    "effect": "base_damage_bonus",
+    "description": "+3 base damage to all attacks",
+    "values": {"damage": 3}
+  },
+  {
+    "id": "power_3",
+    "tag": "power",
+    "threshold": 3,
+    "name": "Unstoppable Force",
+    "effect": "block_pierce",
+    "description": "Attacks ignore half of Block reduction",
+    "values": {"block_reduction_override": 0.25}
+  },
+  {
+    "id": "defensive_2",
+    "tag": "defensive",
+    "threshold": 2,
+    "name": "Thick Skin",
+    "effect": "block_stamina_bonus",
+    "description": "Block recovers +5 extra stamina",
+    "values": {"stamina": 5}
+  },
+  {
+    "id": "defensive_3",
+    "tag": "defensive",
+    "threshold": 3,
+    "name": "Thorns",
+    "effect": "block_reflect",
+    "description": "Blocking reflects 3 damage back",
+    "values": {"reflect_damage": 3}
+  },
+  {
+    "id": "timing_2",
+    "tag": "timing",
+    "threshold": 2,
+    "name": "Clock Watcher",
+    "effect": "chess_time_set_bonus",
+    "description": "+5s chess time",
+    "values": {"time": 5}
+  },
+  {
+    "id": "timing_3",
+    "tag": "timing",
+    "threshold": 3,
+    "name": "Time Stop",
+    "effect": "chess_pause_on_correct",
+    "description": "Chess timer pauses 2s after each correct move",
+    "values": {"pause_seconds": 2}
+  },
+  {
+    "id": "tempo_2",
+    "tag": "tempo",
+    "threshold": 2,
+    "name": "Afterburner",
+    "effect": "heat_retention_bonus",
+    "description": "Heat retention: 30% -> 50%",
+    "values": {"retention": 0.5}
+  },
+  {
+    "id": "tempo_3",
+    "tag": "tempo",
+    "threshold": 3,
+    "name": "On Fire",
+    "effect": "streak_heat_bonus",
+    "description": "3 hits without taking damage adds +0.5 Heat",
+    "values": {"heat_per_streak": 0.5, "streak_threshold": 3}
+  },
+  {
+    "id": "sacrifice_2",
+    "tag": "sacrifice",
+    "threshold": 2,
+    "name": "Blood Pact",
+    "effect": "sacrifice_hp_heat",
+    "description": "Start each fight at 80% HP, but +1.0 base Heat",
+    "values": {"hp_percent": 0.8, "heat_bonus": 1.0}
+  },
+  {
+    "id": "sacrifice_3",
+    "tag": "sacrifice",
+    "threshold": 3,
+    "name": "Death Wish",
+    "effect": "sacrifice_hp_heat_extreme",
+    "description": "Start at 50% HP, but +2.0 base Heat",
+    "values": {"hp_percent": 0.5, "heat_bonus": 2.0}
+  },
+  {
+    "id": "chess_2",
+    "tag": "chess",
+    "threshold": 2,
+    "name": "Opening Prep",
+    "effect": "chess_highlight_piece",
+    "description": "Puzzles highlight which piece to move first",
+    "values": {}
+  },
+  {
+    "id": "chess_3",
+    "tag": "chess",
+    "threshold": 3,
+    "name": "Analyst",
+    "effect": "chess_reveal_opponent_action",
+    "description": "After solving, see opponent's first boxing action",
+    "values": {}
+  },
+  {
+    "id": "boxing_2",
+    "tag": "boxing",
+    "threshold": 2,
+    "name": "Ring Rat",
+    "effect": "max_stamina_set_bonus",
+    "description": "+10 max stamina",
+    "values": {"stamina": 10}
+  },
+  {
+    "id": "boxing_3",
+    "tag": "boxing",
+    "threshold": 3,
+    "name": "Iron Lungs",
+    "effect": "full_stamina_restore_between_rounds",
+    "description": "Stamina fully restores between boxing rounds",
+    "values": {}
+  }
+]
