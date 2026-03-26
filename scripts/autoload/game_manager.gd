@@ -9,7 +9,7 @@ signal run_ended(won: bool)
 signal set_bonus_activated(bonus: Dictionary)
 
 # --- Enums ---
-enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, PERK_DRAFT, PATH_FORK, RESULTS }
+enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, PERK_DRAFT, SHOP, PATH_FORK, RESULTS }
 enum FightResult { IN_PROGRESS, PLAYER_WIN, PLAYER_LOSE }
 
 # --- Run State ---
@@ -41,6 +41,7 @@ var base_heat_bonus: float = 0.0 # Permanent bonuses (Flow State, sacrifice set 
 var chess_time_remaining: float = 0.0
 var chess_solve_time: float = 0.0
 var chess_mistakes: int = 0
+var current_fight_puzzle_solved: bool = false  # Reset per fight
 
 # --- Legacy compat (read-only, computed from heat) ---
 var chess_bonus: float:
@@ -56,6 +57,20 @@ var opponent_perks: Array = []  # Boss perks (Magnus only)
 var chosen_path: String = ""  # "elena" or "marcus"
 var fight_order: Array = []  # Ordered opponent IDs for this run
 
+# --- Shop & Tactic Cards ---
+var player_rep: int = 0                    # Shared currency
+var tactic_hand: Array = []                # Current tactic cards (max 3)
+var active_tactics: Array = []             # Tactics played THIS turn (cleared each turn)
+var endgame_damage_stacks: int = 0         # Permanent +damage from Endgame cards (per fight)
+var shop_purchase_counts: Dictionary = {}  # {item_id: times_bought} for cap tracking
+var shop_chess_time_bonus: float = 0.0     # Cumulative chess time from shop
+var shop_free_mistakes: int = 0            # Cumulative free mistakes from shop
+var shop_base_damage_bonus: int = 0        # Cumulative base damage from shop
+var has_draft_reroll: bool = false          # Next draft gets rerolled
+var has_puzzle_scout: bool = false          # Show puzzle theme before next fight
+var has_scouting_report: bool = false       # Show opponent gimmick before next fight
+var pending_perk_removal: bool = false      # Player needs to pick a perk to remove
+
 # --- Stats ---
 var stats: Dictionary = {}
 
@@ -68,6 +83,8 @@ var all_opponents: Array = []
 var all_fighters: Array = []
 var all_set_bonuses: Array = []
 var all_boss_perks: Array = []
+var all_shop_study: Array = []
+var all_shop_gym: Array = []
 
 func _ready() -> void:
 	_load_data()
@@ -81,6 +98,8 @@ func _load_data() -> void:
 	all_fighters = _load_json("res://data/fighters.json")
 	all_set_bonuses = _load_json("res://data/set_bonuses.json")
 	all_boss_perks = _load_json("res://data/boss_perks.json")
+	all_shop_study = _load_json("res://data/shop_study.json")
+	all_shop_gym = _load_json("res://data/shop_gym.json")
 
 func _load_json(path: String) -> Array:
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -122,6 +141,20 @@ func start_new_run(fighter: Dictionary) -> void:
 	previous_heat = 0.0
 	opponent_perks.clear()
 	chosen_path = ""
+
+	# Shop & tactic card reset
+	player_rep = 0
+	tactic_hand.clear()
+	active_tactics.clear()
+	endgame_damage_stacks = 0
+	shop_purchase_counts.clear()
+	shop_chess_time_bonus = 0.0
+	shop_free_mistakes = 0
+	shop_base_damage_bonus = 0
+	has_draft_reroll = false
+	has_puzzle_scout = false
+	has_scouting_report = false
+	pending_perk_removal = false
 
 	# Build initial fight order (first 2 opponents are mandatory)
 	fight_order.clear()
@@ -193,6 +226,7 @@ func start_fight() -> void:
 	opponent_stamina = opponent_max_stamina
 	current_round_in_fight = 0
 	previous_heat = 0.0
+	current_fight_puzzle_solved = false
 
 	# Restore player stamina; HP gets decreasing heal per fight
 	player_stamina = player_max_stamina
@@ -211,6 +245,13 @@ func start_fight() -> void:
 
 	# Reset boss perks for new fight
 	opponent_perks.clear()
+
+	# Reset per-fight tactic state (endgame stacks, active tactics)
+	reset_fight_tactics()
+
+	# Consume intel items
+	has_puzzle_scout = false
+	has_scouting_report = false
 
 	fight_started.emit(current_opponent_index)
 	change_phase(GamePhase.OPPONENT_REVEAL)
@@ -280,11 +321,18 @@ func _win_fight() -> void:
 	current_opponent_index += 1
 	fight_ended.emit(true)
 
+	# Award Rep for shop purchases
+	var rep_earned := award_fight_rep()
+	stats["last_rep_breakdown"] = rep_earned
+
+	# Reset per-fight tactic state
+	reset_fight_tactics()
+
 	if current_opponent_index >= fight_order.size():
 		end_run(true)
 	elif current_opponent_index == 2 and chosen_path == "":
 		# After fight 2, show path fork (if path not yet chosen)
-		change_phase(GamePhase.PERK_DRAFT)  # Draft first, then path fork
+		change_phase(GamePhase.PERK_DRAFT)  # Draft first, then shop, then path fork
 	else:
 		change_phase(GamePhase.PERK_DRAFT)
 
@@ -333,6 +381,7 @@ func set_chess_result(solved: bool, time_remaining: float, solve_time: float, mi
 	chess_time_remaining = time_remaining
 	chess_solve_time = solve_time
 	chess_mistakes = mistakes
+	current_fight_puzzle_solved = solved
 
 	var difficulty: int = current_opponent.get("chess_difficulty", 1)
 
@@ -409,6 +458,9 @@ func get_chess_time_limit() -> float:
 		if bonus.get("effect", "") == "chess_time_set_bonus":
 			base_time += bonus.get("values", {}).get("time", 5.0)
 
+	# Shop bonus: cumulative chess time from Time Extension purchases
+	base_time += shop_chess_time_bonus
+
 	return base_time
 
 func get_free_mistakes() -> int:
@@ -416,6 +468,8 @@ func get_free_mistakes() -> int:
 	for perk in active_perks:
 		if perk.get("effect", "") == "free_mistake":
 			count += int(PerkSystem.get_named_value(perk, "count", 1.0))
+	# Shop bonus: cumulative free mistakes from Error Margin purchases
+	count += shop_free_mistakes
 	return count
 
 # =============================================================================
@@ -574,6 +628,8 @@ func _get_scene_for_phase(phase: GamePhase) -> String:
 			return "res://scenes/boxing_phase/boxing_phase.tscn"
 		GamePhase.PERK_DRAFT:
 			return "res://scenes/perk_draft/perk_draft.tscn"
+		GamePhase.SHOP:
+			return "res://scenes/shop/shop.tscn"
 		GamePhase.PATH_FORK:
 			return "res://scenes/path_fork/path_fork.tscn"
 		GamePhase.RESULTS:
@@ -589,6 +645,121 @@ func _phase_to_string(phase: GamePhase) -> String:
 		GamePhase.CHESS: return "chess"
 		GamePhase.BOXING: return "boxing"
 		GamePhase.PERK_DRAFT: return "perk_draft"
+		GamePhase.SHOP: return "shop"
 		GamePhase.PATH_FORK: return "path_fork"
 		GamePhase.RESULTS: return "results"
 	return "unknown"
+
+# =============================================================================
+# Shop & Tactic Cards
+# =============================================================================
+
+## Award Rep after a fight. Call this from _win_fight().
+func award_fight_rep() -> Dictionary:
+	var breakdown := ShopSystem.calculate_rep_earned(
+		current_fight_puzzle_solved,
+		chess_mistakes,
+		chess_solve_time,
+		get_chess_time_limit(),
+		heat,
+		opponent_hp,
+		opponent_max_hp,
+		player_hp,
+		player_max_hp
+	)
+	player_rep += breakdown.total
+	return breakdown
+
+## Get shop inventory for current visit.
+func get_shop_inventory() -> Dictionary:
+	return ShopSystem.generate_shop_inventory(
+		all_shop_study, all_shop_gym, tactic_hand, shop_purchase_counts
+	)
+
+## Attempt to purchase a shop item. Returns {success: bool, reason: String}.
+func purchase_shop_item(item: Dictionary) -> Dictionary:
+	var check := ShopSystem.can_purchase(item, player_rep, tactic_hand, shop_purchase_counts)
+	if not check.allowed:
+		return {"success": false, "reason": check.reason}
+
+	var cost: int = item.get("cost", 0)
+	var item_id: String = item.get("id", "")
+	var category: String = item.get("category", "")
+	var effect: String = item.get("effect", "")
+	var values: Dictionary = item.get("values", {})
+
+	# Deduct Rep
+	player_rep -= cost
+
+	# Track purchase count
+	shop_purchase_counts[item_id] = shop_purchase_counts.get(item_id, 0) + 1
+
+	# Apply based on category
+	match category:
+		"tactic_card":
+			TacticCardSystem.add_card(tactic_hand, item)
+
+		"stat_upgrade":
+			_apply_stat_upgrade(effect, values)
+
+		"intel":
+			match effect:
+				"puzzle_scout": has_puzzle_scout = true
+				"scouting_report": has_scouting_report = true
+
+		"service":
+			match effect:
+				"draft_reroll": has_draft_reroll = true
+				"perk_removal": pending_perk_removal = true
+
+	return {"success": true, "reason": ""}
+
+func _apply_stat_upgrade(effect: String, values: Dictionary) -> void:
+	match effect:
+		"shop_chess_time":
+			shop_chess_time_bonus += values.get("time", 10.0)
+		"shop_free_mistake":
+			shop_free_mistakes += int(values.get("count", 1))
+		"shop_max_hp":
+			var hp_add := int(values.get("hp", 8))
+			player_max_hp += hp_add
+			player_hp = mini(player_hp + hp_add, player_max_hp)
+		"shop_max_stamina":
+			var stam_add := int(values.get("stamina", 10))
+			player_max_stamina += stam_add
+			player_stamina = mini(player_stamina + stam_add, player_max_stamina)
+		"shop_base_damage":
+			shop_base_damage_bonus += int(values.get("damage", 1))
+
+## Play a tactic card from hand during boxing. Returns the card or {}.
+func play_tactic_card(index: int) -> Dictionary:
+	var card := TacticCardSystem.play_card(tactic_hand, index)
+	if not card.is_empty():
+		active_tactics.append(card)
+		# Endgame stacks persist for the whole fight
+		if card.get("effect", "") == "endgame":
+			endgame_damage_stacks += int(card.get("values", {}).get("damage_bonus", 3))
+		# Sacrifice HP cost is applied in boxing_phase.gd via resolve_tactics()
+	return card
+
+## Clear active tactics at end of turn (except persistent effects).
+func clear_turn_tactics() -> void:
+	active_tactics.clear()
+
+## Reset per-fight tactic state (endgame stacks, etc.)
+func reset_fight_tactics() -> void:
+	endgame_damage_stacks = 0
+	active_tactics.clear()
+
+## Remove a perk by index (for Perk Removal shop service).
+func remove_perk(index: int) -> Dictionary:
+	if index < 0 or index >= active_perks.size():
+		return {}
+	var removed: Dictionary = active_perks[index]
+	active_perks.remove_at(index)
+	pending_perk_removal = false
+
+	# Recalculate tags and set bonuses
+	tag_counts = PerkSystem.count_tags(active_perks)
+	active_set_bonuses = PerkSystem.get_active_set_bonuses(tag_counts, all_set_bonuses)
+	return removed

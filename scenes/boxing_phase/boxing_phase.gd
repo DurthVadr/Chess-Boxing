@@ -31,6 +31,9 @@ var action_selection_phase: int = 0  # 0 = picking action 1, 1 = picking action 
 var selected_action_1: BoxingAction.ActionType = BoxingAction.ActionType.JAB
 var opponent_next_actions: Array = []  # [action1, action2]
 
+# Tactic card state for this turn
+var tactic_played_this_turn: bool = false  # Only 1 tactic card per turn
+
 const ACTION_COLORS := {
 	"Jab": Color(0.35, 0.55, 0.38),
 	"Cross": Color(0.55, 0.5, 0.3),
@@ -52,6 +55,7 @@ func _ready() -> void:
 
 	_update_ui()
 	_build_action_buttons()
+	_build_tactic_hand()
 	_show_heat()
 	_prepare_opponent_actions()
 
@@ -90,6 +94,96 @@ func _build_action_buttons() -> void:
 
 		btn.pressed.connect(_on_action_selected.bind(action_type))
 		action_container.add_child(btn)
+
+func _build_tactic_hand() -> void:
+	# Find or create the tactic hand container
+	var tactic_container: HBoxContainer = get_node_or_null("%TacticHandContainer")
+	if tactic_container == null:
+		# Create it dynamically if not in the scene tree
+		tactic_container = HBoxContainer.new()
+		tactic_container.name = "TacticHandContainer"
+		tactic_container.alignment = BoxContainer.ALIGNMENT_CENTER
+		tactic_container.add_theme_constant_override("separation", 8)
+		# Insert above the action container
+		var parent: Node = action_container.get_parent()
+		parent.add_child(tactic_container)
+		parent.move_child(tactic_container, action_container.get_index())
+
+	# Clear old buttons
+	for child in tactic_container.get_children():
+		child.queue_free()
+
+	if GameManager.tactic_hand.is_empty():
+		return
+
+	# Label
+	var label := Label.new()
+	label.text = "TACTICS:"
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color(0.7, 0.65, 0.5))
+	tactic_container.add_child(label)
+
+	for i in GameManager.tactic_hand.size():
+		var card: Dictionary = GameManager.tactic_hand[i]
+		var btn := Button.new()
+		btn.text = card.get("name", "?")
+		btn.custom_minimum_size = Vector2(90, 36)
+		btn.add_theme_font_size_override("font_size", 12)
+		btn.tooltip_text = TacticCardSystem.get_card_combat_text(card)
+
+		var style := StyleBoxFlat.new()
+		var shop_type: String = card.get("shop", "study")
+		if shop_type == "study":
+			style.bg_color = Color(0.2, 0.28, 0.45)
+		else:
+			style.bg_color = Color(0.45, 0.2, 0.18)
+		style.corner_radius_top_left = 6
+		style.corner_radius_top_right = 6
+		style.corner_radius_bottom_left = 6
+		style.corner_radius_bottom_right = 6
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 2
+		style.border_color = Color(0.9, 0.75, 0.3, 0.6)
+		btn.add_theme_stylebox_override("normal", style)
+
+		if tactic_played_this_turn:
+			btn.disabled = true
+			btn.tooltip_text = "1 tactic per turn"
+
+		btn.pressed.connect(_on_play_tactic.bind(i))
+		tactic_container.add_child(btn)
+
+func _on_play_tactic(index: int) -> void:
+	if not is_player_turn or round_over or tactic_played_this_turn:
+		return
+
+	var card := GameManager.play_tactic_card(index)
+	if card.is_empty():
+		return
+
+	tactic_played_this_turn = true
+
+	var card_name: String = card.get("name", "?")
+	var combat_text := TacticCardSystem.get_card_combat_text(card)
+	_add_to_log("[color=gold]TACTIC: %s — %s[/color]" % [card_name, combat_text])
+
+	# Apply Fork: blind the telegraph
+	if card.get("effect", "") == "fork":
+		telegraph_label.text = "??? (opponent is blinded)"
+		telegraph_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+
+	# Apply Pin: force opponent action 2 to BLOCK
+	if card.get("effect", "") == "pin":
+		if opponent_next_actions.size() >= 2:
+			opponent_next_actions[1] = BoxingAction.ActionType.BLOCK
+			_add_to_log("[color=gold]Pin: Opponent's second action forced to BLOCK![/color]")
+
+	# Rebuild tactic UI
+	_build_tactic_hand()
+
+	Juice.scale_bounce(action_container, 1.02, 0.15)
 
 func _prepare_opponent_actions() -> void:
 	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
@@ -146,8 +240,26 @@ func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 		combo_label.add_theme_color_override("font_color", Color(0.9, 0.78, 0.3))
 		Juice.punch_text(combo_label)
 
+	# Resolve tactic card effects for this turn
+	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
+	var tactic_mods := TacticCardSystem.resolve_tactics(GameManager.active_tactics, opp_hp_pct)
+
+	# Apply Sacrifice HP cost
+	if tactic_mods.sacrifice_hp_cost > 0:
+		GameManager.player_hp = maxi(1, GameManager.player_hp - tactic_mods.sacrifice_hp_cost)
+		_add_to_log("[color=red]Sacrifice: -%d HP for guaranteed hits![/color]" % tactic_mods.sacrifice_hp_cost)
+
 	# Resolve combat
-	var player_stats := {"damage_mod": 1.0}
+	var player_stats := {
+		"damage_mod": 1.0,
+		"tactic_guaranteed_hit": tactic_mods.player_guaranteed_hit,
+		"tactic_back_rank": tactic_mods.back_rank_active,
+		"tactic_dodge_auto_fail": tactic_mods.dodge_auto_fail,
+		"tactic_en_passant_multiplier": tactic_mods.en_passant_multiplier,
+		"tactic_block_deals_damage": tactic_mods.block_deals_damage,
+		"endgame_damage_bonus": GameManager.endgame_damage_stacks,
+		"shop_base_damage_bonus": GameManager.shop_base_damage_bonus,
+	}
 	var opponent_stats := {
 		"damage_mod": GameManager.current_opponent.get("damage_mod", 1.0),
 		"defense_mod": GameManager.current_opponent.get("defense_mod", 1.0),
@@ -160,6 +272,13 @@ func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 		opponent_stats,
 		GameManager.get_heat()
 	)
+
+	# Zwischenzug: free JAB between opponent's actions
+	if tactic_mods.free_interrupt_action != "":
+		var interrupt_dmg := 5 + GameManager.shop_base_damage_bonus + GameManager.endgame_damage_stacks
+		GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - interrupt_dmg)
+		result.player_damage_dealt += interrupt_dmg
+		result.messages.append("[color=gold]Zwischenzug! Free JAB for %d damage![/color]" % interrupt_dmg)
 
 	# Apply opponent gimmick effects
 	var gimmick = GameManager.current_opponent.get("gimmick", null)
@@ -242,6 +361,9 @@ func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 	# Clear combo label after a moment
 	await get_tree().create_timer(0.8).timeout
 	combo_label.text = ""
+	GameManager.clear_turn_tactics()
+	tactic_played_this_turn = false
+	_build_tactic_hand()
 	_prepare_opponent_actions()
 	action_phase_label.text = "SELECT ACTION 1"
 	is_player_turn = true

@@ -1,0 +1,112 @@
+[
+  {
+    "id": "tactic_fork",
+    "name": "Fork",
+    "category": "tactic_card",
+    "shop": "study",
+    "cost": 3,
+    "description": "Opponent chooses both actions blind — no telegraph this turn.",
+    "effect": "fork",
+    "values": {"turns": 1},
+    "flavor": "Attack two weaknesses at once.",
+    "max_owned": 2
+  },
+  {
+    "id": "tactic_pin",
+    "name": "Pin",
+    "category": "tactic_card",
+    "shop": "study",
+    "cost": 4,
+    "description": "Lock one opponent action slot to BLOCK for 1 turn. They're pinned down.",
+    "effect": "pin",
+    "values": {"forced_action": "BLOCK", "slot": 1, "turns": 1},
+    "flavor": "They can't move without losing something.",
+    "max_owned": 1
+  },
+  {
+    "id": "tactic_en_passant",
+    "name": "En Passant",
+    "category": "tactic_card",
+    "shop": "study",
+    "cost": 4,
+    "description": "If opponent uses DODGE this turn, it auto-fails and you deal 1.5x damage.",
+    "effect": "en_passant",
+    "values": {"damage_multiplier": 1.5},
+    "flavor": "They tried to slip past. You were ready.",
+    "max_owned": 2
+  },
+  {
+    "id": "tactic_discovery",
+    "name": "Discovery",
+    "category": "tactic_card",
+    "shop": "study",
+    "cost": 3,
+    "description": "Your BLOCK also deals 50% of your other action's base damage.",
+    "effect": "discovery",
+    "values": {"damage_ratio": 0.5},
+    "flavor": "The real attack was hidden behind the defense.",
+    "max_owned": 2
+  },
+  {
+    "id": "tactic_zwischenzug",
+    "name": "Zwischenzug",
+    "category": "tactic_card",
+    "shop": "study",
+    "cost": 5,
+    "description": "Insert a free JAB between opponent's two actions. Interrupts their combo.",
+    "effect": "zwischenzug",
+    "values": {"free_action": "JAB"},
+    "flavor": "The in-between move they never expected.",
+    "max_owned": 1
+  },
+  {
+    "id": "stat_chess_time",
+    "name": "Time Extension",
+    "category": "stat_upgrade",
+    "shop": "study",
+    "cost": 2,
+    "description": "+10s chess puzzle time (permanent).",
+    "effect": "shop_chess_time",
+    "values": {"time": 10},
+    "flavor": "More time to think.",
+    "max_purchases": 3,
+    "cap_description": "Max +30s from shop"
+  },
+  {
+    "id": "stat_free_mistake",
+    "name": "Error Margin",
+    "category": "stat_upgrade",
+    "shop": "study",
+    "cost": 3,
+    "description": "+1 free mistake on puzzles (permanent).",
+    "effect": "shop_free_mistake",
+    "values": {"count": 1},
+    "flavor": "Even grandmasters reconsider.",
+    "max_purchases": 3,
+    "cap_description": "Max +3 from shop"
+  },
+  {
+    "id": "intel_puzzle_scout",
+    "name": "Puzzle Scout",
+    "category": "intel",
+    "shop": "study",
+    "cost": 2,
+    "description": "See next fight's puzzle theme before it starts. One use.",
+    "effect": "puzzle_scout",
+    "values": {},
+    "flavor": "Know what's coming.",
+    "max_owned": 1
+  },
+  {
+    "id": "service_draft_reroll",
+    "name": "Draft Reroll",
+    "category": "service",
+    "shop": "study",
+    "cost": 2,
+    "description": "Your next perk draft offers 3 new choices.",
+    "effect": "draft_reroll",
+    "values": {},
+    "flavor": "Shuffle the deck.",
+    "max_owned": 1
+  }
+]

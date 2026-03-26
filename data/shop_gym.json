@@ -1,0 +1,113 @@
+[
+  {
+    "id": "tactic_sacrifice",
+    "name": "Sacrifice",
+    "category": "tactic_card",
+    "shop": "gym",
+    "cost": 3,
+    "description": "Lose 8 HP. Both your actions this turn are guaranteed hits.",
+    "effect": "sacrifice",
+    "values": {"hp_cost": 8},
+    "flavor": "Give something up. Get everything back.",
+    "max_owned": 2
+  },
+  {
+    "id": "tactic_back_rank",
+    "name": "Back Rank",
+    "category": "tactic_card",
+    "shop": "gym",
+    "cost": 4,
+    "description": "If opponent is below 30% HP, your UPPERCUT ignores dodge and block.",
+    "effect": "back_rank",
+    "values": {"hp_threshold": 0.3},
+    "flavor": "Nowhere to run. Nowhere to hide.",
+    "max_owned": 1
+  },
+  {
+    "id": "tactic_tempo",
+    "name": "Tempo",
+    "category": "tactic_card",
+    "shop": "gym",
+    "cost": 4,
+    "description": "You act first. Your action 1 resolves before opponent chooses action 2.",
+    "effect": "tempo",
+    "values": {},
+    "flavor": "Speed is the ultimate advantage.",
+    "max_owned": 2
+  },
+  {
+    "id": "tactic_endgame",
+    "name": "Endgame",
+    "category": "tactic_card",
+    "shop": "gym",
+    "cost": 5,
+    "description": "+3 damage to all attacks for the rest of this fight. Stacks.",
+    "effect": "endgame",
+    "values": {"damage_bonus": 3},
+    "flavor": "The final push.",
+    "max_owned": 2
+  },
+  {
+    "id": "stat_hp",
+    "name": "HP Training",
+    "category": "stat_upgrade",
+    "shop": "gym",
+    "cost": 2,
+    "description": "+8 max HP and heal 8 HP (permanent).",
+    "effect": "shop_max_hp",
+    "values": {"hp": 8},
+    "flavor": "Take more punishment.",
+    "max_purchases": 3,
+    "cap_description": "Max +24 HP from shop"
+  },
+  {
+    "id": "stat_stamina",
+    "name": "Stamina Training",
+    "category": "stat_upgrade",
+    "shop": "gym",
+    "cost": 2,
+    "description": "+10 max stamina (permanent).",
+    "effect": "shop_max_stamina",
+    "values": {"stamina": 10},
+    "flavor": "Go the distance.",
+    "max_purchases": 3,
+    "cap_description": "Max +30 stamina from shop"
+  },
+  {
+    "id": "stat_heavy_bag",
+    "name": "Heavy Bag",
+    "category": "stat_upgrade",
+    "shop": "gym",
+    "cost": 3,
+    "description": "+1 base damage to all attacks (permanent).",
+    "effect": "shop_base_damage",
+    "values": {"damage": 1},
+    "flavor": "Hit harder. Every time.",
+    "max_purchases": 2,
+    "cap_description": "Max +2 damage from shop"
+  },
+  {
+    "id": "intel_scouting_report",
+    "name": "Scouting Report",
+    "category": "intel",
+    "shop": "gym",
+    "cost": 2,
+    "description": "See opponent's AI style and gimmick before the fight. One use.",
+    "effect": "scouting_report",
+    "values": {},
+    "flavor": "Know your enemy.",
+    "max_owned": 1
+  },
+  {
+    "id": "service_perk_removal",
+    "name": "Perk Removal",
+    "category": "service",
+    "shop": "gym",
+    "cost": 3,
+    "description": "Remove one perk from your build. Tighten your synergies.",
+    "effect": "perk_removal",
+    "values": {},
+    "flavor": "Cut the dead weight.",
+    "max_owned": 1
+  }
+]

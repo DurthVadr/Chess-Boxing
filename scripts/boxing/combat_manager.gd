@@ -152,6 +152,12 @@ func _calculate_attack_damage(action: BoxingAction, stats: Dictionary, is_player
 		var mult: float = GameManager.get_perk_named_value("all_in", "damage_multiplier", 1.5)
 		total = int(float(total) * mult)
 
+	# Shop: base damage bonus (permanent from Heavy Bag)
+	total += int(stats.get("shop_base_damage_bonus", 0))
+
+	# Tactic: Endgame stacks (+damage for rest of fight)
+	total += int(stats.get("endgame_damage_bonus", 0))
+
 	return maxi(1, total)
 
 ## Calculate stamina cost for an action.
@@ -321,13 +327,40 @@ func _resolve_action_pair(
 
 	# Opponent defense
 	if opponent_action == BoxingAction.ActionType.DODGE:
-		var dodge_chance := _get_dodge_chance(p_act.speed, false)
-		if randf() < dodge_chance:
-			result.opponent_dodged = true
-			player_damage = 0
+		# Tactic: En Passant — opponent dodge auto-fails
+		if player_stats.get("tactic_dodge_auto_fail", false):
+			result.messages.append("[color=gold]En Passant! Dodge fails![/color]")
+			var en_passant_mult: float = player_stats.get("tactic_en_passant_multiplier", 1.0)
+			if en_passant_mult > 1.0:
+				player_damage = int(float(player_damage) * en_passant_mult)
+		# Tactic: Sacrifice — guaranteed hit bypasses dodge
+		elif player_stats.get("tactic_guaranteed_hit", false):
+			result.messages.append("[color=gold]Sacrifice! Guaranteed hit![/color]")
+		else:
+			var dodge_chance := _get_dodge_chance(p_act.speed, false)
+			if randf() < dodge_chance:
+				result.opponent_dodged = true
+				player_damage = 0
 	elif opponent_action == BoxingAction.ActionType.BLOCK:
-		result.opponent_blocked = true
-		player_damage = maxi(1, player_damage / 2)
+		# Tactic: Back Rank — UPPERCUT ignores block when opp HP is low
+		if player_stats.get("tactic_back_rank", false) and player_action == BoxingAction.ActionType.UPPERCUT:
+			result.messages.append("[color=gold]Back Rank! Defense pierced![/color]")
+		# Tactic: Sacrifice — guaranteed hit reduces block effectiveness
+		elif player_stats.get("tactic_guaranteed_hit", false):
+			result.opponent_blocked = true
+			player_damage = maxi(1, int(float(player_damage) * 0.75))
+		else:
+			result.opponent_blocked = true
+			player_damage = maxi(1, player_damage / 2)
+
+	# Tactic: Discovery — BLOCK also deals damage
+	if player_action == BoxingAction.ActionType.BLOCK:
+		var block_dmg_ratio: float = player_stats.get("tactic_block_deals_damage", 0.0)
+		if block_dmg_ratio > 0.0:
+			var block_damage := int(float(opp_damage) * block_dmg_ratio)
+			if block_damage > 0:
+				player_damage += block_damage
+				result.messages.append("[color=gold]Discovery! Block deals %d![/color]" % block_damage)
 
 	# Perk: damage reduction (heat-scaled)
 	var dmg_red := int(GameManager.get_perk_scaled_value("damage_reduction", 0.0))

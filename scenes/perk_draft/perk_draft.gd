@@ -230,22 +230,19 @@ func _on_continue() -> void:
 	# Queen's Gambit: skip this draft, next one is 5 Rares
 	if chosen_perk.get("effect", "") == "queens_gambit":
 		GameManager.queens_gambit_active = true
-		if GameManager.current_opponent_index == 2 and GameManager.chosen_path == "":
-			GameManager.change_phase(GameManager.GamePhase.PATH_FORK)
-		else:
-			GameManager.change_phase(GameManager.GamePhase.TOURNAMENT)
+		_go_to_shop_or_next()
 		return
 
 	GameManager.add_perk(chosen_perk)
 
 	# Apply immediate perk effects
 	_apply_immediate_effects(chosen_perk)
+	_go_to_shop_or_next()
 
-	# After fight 2, redirect to path fork if path not yet chosen
-	if GameManager.current_opponent_index == 2 and GameManager.chosen_path == "":
-		GameManager.change_phase(GameManager.GamePhase.PATH_FORK)
-	else:
-		GameManager.change_phase(GameManager.GamePhase.TOURNAMENT)
+## Route to The Corner (shop) after drafting, then to path fork or tournament.
+func _go_to_shop_or_next() -> void:
+	# Always visit the shop between fights
+	GameManager.change_phase(GameManager.GamePhase.SHOP)
 
 func _apply_immediate_effects(perk: Dictionary) -> void:
 	var effect: String = perk.get("effect", "")
