@@ -16,6 +16,7 @@ extends Control
 
 var study_items: Array = []
 var gym_items: Array = []
+var _is_rebuilding_shop: bool = false
 
 const STUDY_COLOR := Color(0.3, 0.42, 0.68)   # Blue — chess
 const GYM_COLOR := Color(0.68, 0.3, 0.28)      # Red — boxing
@@ -24,6 +25,7 @@ const DISABLED_COLOR := Color(0.4, 0.4, 0.4)
 
 func _ready() -> void:
 	continue_btn.pressed.connect(_on_continue)
+	_wire_button_hover(continue_btn)
 
 	var inventory := GameManager.get_shop_inventory()
 	study_items = inventory.study
@@ -96,7 +98,7 @@ func _build_shop_column(container: VBoxContainer, items: Array, shop_type: Strin
 		var tween := create_tween()
 		tween.tween_property(card, "modulate:a", 1.0, 0.25).set_delay(0.1 + i * 0.1)
 
-func _create_item_card(item: Dictionary, shop_type: String, index: int) -> PanelContainer:
+func _create_item_card(item: Dictionary, shop_type: String, _index: int) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(240, 0)
 
@@ -130,8 +132,8 @@ func _create_item_card(item: Dictionary, shop_type: String, index: int) -> Panel
 	if category == "tactic_card":
 		var art := TextureRect.new()
 		art.custom_minimum_size = Vector2(48, 48)
-		art.expand_mode = 1
-		art.stretch_mode = 5
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		var effect: String = item.get("effect", "")
 		var art_path := "res://assets/sprites/cards/tactic_%s.png" % effect
@@ -197,6 +199,29 @@ func _create_item_card(item: Dictionary, shop_type: String, index: int) -> Panel
 	buy_btn.flat = true
 	buy_btn.anchors_preset = Control.PRESET_FULL_RECT
 	buy_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_wire_button_hover(buy_btn)
+
+	var base_bg_color: Color = style.bg_color
+	var base_border_color: Color = style.border_color
+	buy_btn.mouse_entered.connect(func():
+		if buy_btn.disabled or not is_instance_valid(panel):
+			return
+		var panel_style := panel.get_theme_stylebox("panel")
+		if panel_style is StyleBoxFlat:
+			var panel_style_flat := panel_style as StyleBoxFlat
+			panel_style_flat.bg_color = base_bg_color.lightened(0.12)
+			panel_style_flat.border_color = GOLD
+		Juice.scale_bounce(panel, 1.02, 0.12)
+	)
+	buy_btn.mouse_exited.connect(func():
+		if not is_instance_valid(panel):
+			return
+		var panel_style := panel.get_theme_stylebox("panel")
+		if panel_style is StyleBoxFlat:
+			var panel_style_flat := panel_style as StyleBoxFlat
+			panel_style_flat.bg_color = base_bg_color
+			panel_style_flat.border_color = base_border_color
+	)
 
 	# Check affordability
 	var check := ShopSystem.can_purchase(item, GameManager.player_rep, GameManager.tactic_hand, GameManager.shop_purchase_counts)
@@ -219,28 +244,49 @@ func _category_display(category: String) -> String:
 		"service": return "SERVICE"
 	return category.to_upper()
 
+func _wire_button_hover(btn: Button) -> void:
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.mouse_entered.connect(func():
+		if btn.disabled:
+			return
+		Juice.scale_bounce(btn, 1.05, 0.14)
+		btn.add_theme_color_override("font_color", GOLD)
+	)
+	btn.mouse_exited.connect(func():
+		btn.remove_theme_color_override("font_color")
+	)
+
 # =============================================================================
 # Purchase
 # =============================================================================
 
-func _on_buy_item(item: Dictionary, shop_type: String) -> void:
+func _on_buy_item(item: Dictionary, _unused_shop_type: String) -> void:
+	if _is_rebuilding_shop:
+		return
+
 	var result := GameManager.purchase_shop_item(item)
 	if not result.success:
 		return
 
+	_is_rebuilding_shop = true
+
 	# Refresh UI
 	_update_header()
 
-	# Rebuild both columns (stock may have changed due to hand limit, etc.)
+	# Rebuild deferred so we don't destroy currently hovered/pressed controls mid-signal.
+	call_deferred("_rebuild_shop_after_purchase")
+
+	# Flash the bought item's shop title
+	Juice.scale_bounce(continue_btn, 1.05, 0.15)
+
+func _rebuild_shop_after_purchase() -> void:
 	var inventory := GameManager.get_shop_inventory()
 	study_items = inventory.study
 	gym_items = inventory.gym
 	_build_shop_column(study_container, study_items, "study")
 	_build_shop_column(gym_container, gym_items, "gym")
 	_update_perk_removal_panel()
-
-	# Flash the bought item's shop title
-	Juice.scale_bounce(continue_btn, 1.05, 0.15)
+	_is_rebuilding_shop = false
 
 # =============================================================================
 # Perk Removal
@@ -272,11 +318,13 @@ func _update_perk_removal_panel() -> void:
 		btn.text = "%s — %s" % [perk.get("name", "?"), perk.get("description", "")]
 		btn.add_theme_font_size_override("font_size", 12)
 		btn.pressed.connect(_on_remove_perk.bind(i))
+		_wire_button_hover(btn)
 		vbox.add_child(btn)
 
 	var skip_btn := Button.new()
 	skip_btn.text = "Skip removal"
 	skip_btn.add_theme_font_size_override("font_size", 11)
+	_wire_button_hover(skip_btn)
 	skip_btn.pressed.connect(func():
 		GameManager.pending_perk_removal = false
 		_update_perk_removal_panel()

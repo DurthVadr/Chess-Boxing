@@ -81,23 +81,23 @@ static func get_first_value(perk: Dictionary) -> float:
 	if values is Dictionary and not values.is_empty():
 		# Return the first value
 		for key in values:
-			var val = values[key]
-			if val is float or val is int:
-				return float(val)
+			var first_val = values[key]
+			if first_val is float or first_val is int:
+				return float(first_val)
 		return 0.0
 	# Old schema fallback: single value field
-	var val = perk.get("value", 0.0)
-	if val is float or val is int:
-		return float(val)
+	var single_val = perk.get("value", 0.0)
+	if single_val is float or single_val is int:
+		return float(single_val)
 	return 0.0
 
 ## Get a specific named value from a perk's values dict.
 static func get_named_value(perk: Dictionary, value_name: String, default_val: float = 0.0) -> float:
 	var values = perk.get("values", {})
 	if values is Dictionary:
-		var val = values.get(value_name, default_val)
-		if val is float or val is int:
-			return float(val)
+		var named_val = values.get(value_name, default_val)
+		if named_val is float or named_val is int:
+			return float(named_val)
 	return default_val
 
 ## Check if a perk's effects scale with heat.

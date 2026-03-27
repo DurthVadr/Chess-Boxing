@@ -11,7 +11,7 @@ static func apply_post_turn(
 	result: Dictionary,
 	round_number: int,
 	opponent_hp: int,
-	opponent_max_hp: int
+	_opponent_max_hp: int
 ) -> Array:
 	if gimmick.is_empty():
 		return []

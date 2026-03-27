@@ -19,7 +19,7 @@ static func calculate_rep_earned(
 	time_limit: float,
 	heat: float,
 	opponent_hp: int,
-	opponent_max_hp: int,
+	_opponent_max_hp: int,
 	player_hp: int,
 	player_max_hp: int
 ) -> Dictionary:

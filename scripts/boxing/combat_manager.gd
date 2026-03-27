@@ -4,7 +4,6 @@ extends RefCounted
 ## Resolves combat turns between player and opponent.
 ## Heat scales perk effects, NOT base action damage.
 
-signal turn_resolved(result: Dictionary)
 
 var actions: Dictionary  # ActionType -> BoxingAction
 
@@ -87,7 +86,7 @@ func resolve_turn(
 			result.messages.append("Opponent's dodge failed!")
 	elif opponent_action == BoxingAction.ActionType.BLOCK:
 		result.opponent_blocked = true
-		player_damage = maxi(1, player_damage / 2)
+		player_damage = maxi(1, player_damage / 2)  # Integer division intended
 		result.messages.append("Opponent blocked! Your damage reduced.")
 
 	# --- Apply Perk: Damage Reduction (heat-scaled) ---
@@ -351,7 +350,7 @@ func _resolve_action_pair(
 			player_damage = maxi(1, int(float(player_damage) * 0.75))
 		else:
 			result.opponent_blocked = true
-			player_damage = maxi(1, player_damage / 2)
+			player_damage = maxi(1, player_damage / 2)  # Integer division intended
 
 	# Tactic: Discovery — BLOCK also deals damage
 	if player_action == BoxingAction.ActionType.BLOCK:
@@ -386,7 +385,6 @@ func _resolve_action_pair(
 ## Apply combo bonus effects to the action results.
 func _apply_combo_to_result(combo: Dictionary, result1: Dictionary, result2: Dictionary, is_player: bool) -> void:
 	var effect: String = combo.get("effect", "")
-	var dmg_key := "player_damage_dealt" if is_player else "player_damage_taken"
 
 	match effect:
 		"guaranteed_hit_action2":
@@ -402,6 +400,7 @@ func _apply_combo_to_result(combo: Dictionary, result1: Dictionary, result2: Dic
 		"half_stamina_action2":
 			# Second action costs half stamina
 			if is_player:
+				@warning_ignore("integer_division")
 				result2["player_stamina_change"] = result2.get("player_stamina_change", 0) / 2
 
 		"bonus_damage_action2":

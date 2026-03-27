@@ -125,7 +125,7 @@ func _brawler_actions(hp_pct: float, stamina: int) -> Array:
 		[[BoxingAction.ActionType.JAB, BoxingAction.ActionType.HOOK], 1],
 	])
 
-func _technician_actions(hp_pct: float, stamina: int, player_hp_pct: float) -> Array:
+func _technician_actions(_hp_pct: float, stamina: int, player_hp_pct: float) -> Array:
 	# Deliberate combos. Counter-plays player's last combo.
 	if stamina < 20:
 		return [BoxingAction.ActionType.BLOCK, BoxingAction.ActionType.BLOCK]

@@ -55,6 +55,9 @@ const MUFFLE_CUTOFF := 800.0
 
 # --- State ---
 
+## Set to false once real music tracks are in place
+var mute: bool = true
+
 var _current_track_key: String = ""
 var _player_a: AudioStreamPlayer
 var _player_b: AudioStreamPlayer
@@ -94,6 +97,8 @@ func _ready() -> void:
 
 ## Play a track by key with crossfade. If same track is already playing, does nothing.
 func play_track(track_key: String, force_restart: bool = false) -> void:
+	if mute:
+		return
 	if track_key == _current_track_key and not force_restart:
 		return
 

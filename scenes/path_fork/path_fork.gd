@@ -40,8 +40,8 @@ func _create_path_card(opp: Dictionary) -> PanelContainer:
 	if sprite_base != "":
 		var portrait := TextureRect.new()
 		portrait.custom_minimum_size = Vector2(96, 96)
-		portrait.expand_mode = 1
-		portrait.stretch_mode = 5
+		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
 		portrait.texture = load(tex_path)

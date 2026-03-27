@@ -26,8 +26,8 @@ func _build_bracket() -> void:
 		if sprite_base != "" and i <= GameManager.current_opponent_index:
 			var portrait := TextureRect.new()
 			portrait.custom_minimum_size = Vector2(40, 40)
-			portrait.expand_mode = 1
-			portrait.stretch_mode = 5
+			portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			var tex_path := "res://assets/sprites/opponents/%s_64.png" % sprite_base
 			portrait.texture = load(tex_path)
 			row.add_child(portrait)

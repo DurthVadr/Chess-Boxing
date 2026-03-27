@@ -584,10 +584,10 @@ func get_draft_choices(count: int = 3) -> Array:
 	if queens_gambit_active:
 		queens_gambit_active = false
 		var rare_perks := all_perks.filter(func(p): return p.get("rarity", "") == "rare")
-		var owned_ids := []
+		var rare_owned_ids := []
 		for p in active_perks:
-			owned_ids.append(p.get("id", ""))
-		rare_perks = rare_perks.filter(func(p): return p.get("id", "") not in owned_ids)
+			rare_owned_ids.append(p.get("id", ""))
+		rare_perks = rare_perks.filter(func(p): return p.get("id", "") not in rare_owned_ids)
 		rare_perks.shuffle()
 		return rare_perks.slice(0, mini(5, rare_perks.size()))
 
@@ -610,7 +610,9 @@ func change_phase(new_phase: GamePhase) -> void:
 
 	var scene_path := _get_scene_for_phase(new_phase)
 	if scene_path != "":
-		get_tree().change_scene_to_file(scene_path)
+		var err := get_tree().change_scene_to_file(scene_path)
+		if err != OK:
+			push_error("Failed to change scene to %s (error %d)" % [scene_path, err])
 
 func _get_scene_for_phase(phase: GamePhase) -> String:
 	match phase:

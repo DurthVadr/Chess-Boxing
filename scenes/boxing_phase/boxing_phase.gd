@@ -159,8 +159,8 @@ func _build_tactic_hand() -> void:
 		# Card art
 		var art := TextureRect.new()
 		art.custom_minimum_size = Vector2(64, 64)
-		art.expand_mode = 1
-		art.stretch_mode = 5
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		var art_path := "res://assets/sprites/cards/tactic_%s.png" % card.get("effect", "")
 		if ResourceLoader.exists(art_path):
 			art.texture = load(art_path)
