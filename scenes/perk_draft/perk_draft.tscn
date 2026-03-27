@@ -1,7 +1,78 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scenes/perk_draft/perk_draft.gd" id="1"]
 [ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="header_strip_bg"]
+content_margin_left = 30.0
+content_margin_top = 14.0
+content_margin_right = 30.0
+content_margin_bottom = 14.0
+bg_color = Color(0.03, 0.03, 0.05, 0.95)
+border_width_bottom = 1
+border_color = Color(0.35, 0.30, 0.18, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="draft_normal"]
+content_margin_left = 36.0
+content_margin_top = 16.0
+content_margin_right = 36.0
+content_margin_bottom = 16.0
+bg_color = Color(0.06, 0.05, 0.10, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.88, 0.74, 0.24, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="draft_hover"]
+content_margin_left = 36.0
+content_margin_top = 16.0
+content_margin_right = 36.0
+content_margin_bottom = 16.0
+bg_color = Color(0.60, 0.48, 0.10, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1.0, 0.94, 0.42, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.9, 0.78, 0.3, 0.4)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="draft_pressed"]
+content_margin_left = 36.0
+content_margin_top = 16.0
+content_margin_right = 36.0
+content_margin_bottom = 16.0
+bg_color = Color(0.72, 0.58, 0.14, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1.0, 0.97, 0.52, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="draft_focus"]
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9, 0.78, 0.3, 0.55)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="PerkDraft" type="Control"]
 layout_mode = 3
@@ -20,38 +91,36 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.14, 0.28, 0.2, 1)
+color = Color(0.06, 0.05, 0.09, 1)
 
-[node name="TitleLabel" type="Label" parent="."]
-unique_name_in_owner = true
+[node name="HeaderStrip" type="PanelContainer" parent="."]
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -220.0
-offset_top = 25.0
-offset_right = 220.0
-offset_bottom = 75.0
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 0.15
 grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("header_strip_bg")
+
+[node name="HeaderVBox" type="VBoxContainer" parent="HeaderStrip"]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="HeaderStrip/HeaderVBox"]
+unique_name_in_owner = true
+layout_mode = 2
 theme_override_font_sizes/font_size = 34
 theme_override_colors/font_color = Color(0.9, 0.78, 0.35, 1)
 text = "CHOOSE A PERK"
 horizontal_alignment = 1
 
-[node name="PerkCountLabel" type="Label" parent="."]
+[node name="PerkCountLabel" type="Label" parent="HeaderStrip/HeaderVBox"]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -280.0
-offset_top = 78.0
-offset_right = 280.0
-offset_bottom = 100.0
-grow_horizontal = 2
+layout_mode = 2
 theme_override_font_sizes/font_size = 13
-theme_override_colors/font_color = Color(0.5, 0.5, 0.55, 1)
-text = "Perks: 0"
+theme_override_colors/font_color = Color(0.50, 0.50, 0.55, 1)
+text = "No perks yet"
 horizontal_alignment = 1
 
 [node name="CardContainer" type="HBoxContainer" parent="."]
@@ -62,13 +131,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -430.0
-offset_top = -110.0
-offset_right = 430.0
-offset_bottom = 110.0
+offset_left = -450.0
+offset_top = -130.0
+offset_right = 450.0
+offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 25
+theme_override_constants/separation = 30
 alignment = 1
 
 [node name="ContinueBtn" type="Button" parent="."]
@@ -79,11 +148,18 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -100.0
-offset_top = -58.0
-offset_right = 100.0
-offset_bottom = -15.0
+offset_left = -120.0
+offset_top = -68.0
+offset_right = 120.0
+offset_bottom = -18.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.92, 0.80, 0.28, 1)
+theme_override_colors/font_hover_color = Color(0.06, 0.05, 0.10, 1)
+theme_override_colors/font_pressed_color = Color(0.06, 0.05, 0.10, 1)
+theme_override_styles/normal = SubResource("draft_normal")
+theme_override_styles/hover = SubResource("draft_hover")
+theme_override_styles/pressed = SubResource("draft_pressed")
+theme_override_styles/focus = SubResource("draft_focus")
 text = "DRAFT"

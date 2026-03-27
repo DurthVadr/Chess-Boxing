@@ -8,6 +8,7 @@ extends Control
 @onready var status_label: Label = %StatusLabel
 @onready var bonus_bar: ProgressBar = %BonusBar
 @onready var mistake_label: Label = %MistakeLabel
+@onready var enemy_clock_label: Label = %EnemyClockLabel
 
 var board_logic: ChessBoardLogic
 var current_puzzle: Dictionary = {}
@@ -55,6 +56,10 @@ func _ready() -> void:
 	status_label.text = "Your move!"
 	bonus_bar.value = 100.0
 
+	# Enemy clock — show difficulty as stars
+	var diff: int = int(GameManager.current_opponent.get("chess_difficulty", 1))
+	enemy_clock_label.text = "★".repeat(diff) + "☆".repeat(maxi(0, 5 - diff))
+
 	_build_board()
 	is_active = true
 	solve_start_time = Time.get_ticks_msec() / 1000.0
@@ -74,12 +79,12 @@ func _process(delta: float) -> void:
 
 	# Color timer based on urgency + shift music intensity
 	if time_remaining < 10.0:
-		timer_label.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
+		timer_label.add_theme_color_override("font_color", Color(0.92, 0.22, 0.22))
 		MusicManager.shift_intensity("chess_tense")
 	elif time_remaining < 20.0:
-		timer_label.add_theme_color_override("font_color", Color(0.9, 0.7, 0.2))
+		timer_label.add_theme_color_override("font_color", Color(0.92, 0.72, 0.22))
 	else:
-		timer_label.add_theme_color_override("font_color", Color.WHITE)
+		timer_label.add_theme_color_override("font_color", Color(0.35, 0.85, 0.45))
 
 	# Update bonus bar (decays with time)
 	bonus_bar.value = (time_remaining / time_limit) * 100.0

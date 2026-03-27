@@ -5,12 +5,13 @@ extends Control
 @onready var player_hp_bar: ProgressBar = %PlayerHPBar
 @onready var player_hp_label: Label = %PlayerHPLabel
 @onready var player_stamina_bar: ProgressBar = %PlayerStaminaBar
+@onready var player_stamina_label: Label = %PlayerStaminaLabel
 @onready var player_name_label: Label = %PlayerNameLabel
 @onready var opponent_hp_bar: ProgressBar = %OpponentHPBar
 @onready var opponent_hp_label: Label = %OpponentHPLabel
 @onready var opponent_stamina_bar: ProgressBar = %OpponentStaminaBar
+@onready var opponent_stamina_label: Label = %OpponentStaminaLabel
 @onready var opponent_name_label: Label = %OpponentNameLabel
-@onready var telegraph_label: Label = %TelegraphLabel
 @onready var combat_log: RichTextLabel = %CombatLog
 @onready var action_container: GridContainer = %ActionContainer
 @onready var bonus_label: Label = %BonusLabel
@@ -18,6 +19,7 @@ extends Control
 @onready var opponent_sprite: TextureRect = %OpponentSprite
 @onready var combo_label: Label = %ComboLabel
 @onready var action_phase_label: Label = %ActionPhaseLabel
+@onready var round_timer_label: Label = %RoundTimerLabel
 
 var combat_mgr: CombatManager
 var opponent_ai: OpponentAI
@@ -25,6 +27,7 @@ var is_player_turn: bool = true
 var round_over: bool = false
 var turn_count: int = 0
 var second_wind_used: bool = false
+var round_time_remaining: float = 180.0  # 3:00 cosmetic countdown
 
 # 2-action selection state
 var action_selection_phase: int = 0  # 0 = picking action 1, 1 = picking action 2
@@ -34,15 +37,25 @@ var opponent_next_actions: Array = []  # [action1, action2]
 # Tactic card state for this turn
 var tactic_played_this_turn: bool = false  # Only 1 tactic card per turn
 
+# Offense (warm reds/oranges) · Defense (cool blues/greys)
 const ACTION_COLORS := {
-	"Jab": Color(0.35, 0.55, 0.38),
-	"Cross": Color(0.55, 0.5, 0.3),
-	"Hook": Color(0.65, 0.42, 0.28),
-	"Uppercut": Color(0.72, 0.32, 0.28),
-	"Block": Color(0.35, 0.42, 0.6),
-	"Dodge": Color(0.3, 0.52, 0.58),
-	"Clinch": Color(0.45, 0.45, 0.42),
+	"Jab":      Color(0.52, 0.22, 0.18),
+	"Cross":    Color(0.58, 0.26, 0.16),
+	"Hook":     Color(0.60, 0.32, 0.14),
+	"Uppercut": Color(0.62, 0.26, 0.14),
+	"Block":    Color(0.20, 0.30, 0.54),
+	"Dodge":    Color(0.18, 0.36, 0.52),
+	"Clinch":   Color(0.26, 0.30, 0.40),
 }
+
+func _process(delta: float) -> void:
+	if round_over:
+		return
+	round_time_remaining = maxf(round_time_remaining - delta, 0.0)
+	var mins := int(round_time_remaining) / 60
+	var secs := int(round_time_remaining) % 60
+	round_timer_label.text = "%02d:%02d" % [mins, secs]
+
 
 func _ready() -> void:
 	combat_mgr = CombatManager.new()
@@ -208,8 +221,7 @@ func _on_play_tactic(index: int) -> void:
 
 	# Apply Fork: blind the telegraph
 	if card.get("effect", "") == "fork":
-		telegraph_label.text = "??? (opponent is blinded)"
-		telegraph_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		_add_to_log("[color=gray]> ??? (opponent is blinded)[/color]")
 
 	# Apply Pin: force opponent action 2 to BLOCK
 	if card.get("effect", "") == "pin":
@@ -227,16 +239,15 @@ func _prepare_opponent_actions() -> void:
 	var player_hp_pct := float(GameManager.player_hp) / float(GameManager.player_max_hp)
 	opponent_next_actions = opponent_ai.choose_actions(opp_hp_pct, GameManager.opponent_stamina, player_hp_pct)
 
-	# Telegraph — shows hint for first action
-	telegraph_label.text = opponent_ai.get_telegraph_for_actions(opponent_next_actions)
-	telegraph_label.add_theme_color_override("font_color", Color(0.9, 0.6, 0.15))
+	# Telegraph — route hint into combat log so it stays in the log box
+	var telegraph_text := opponent_ai.get_telegraph_for_actions(opponent_next_actions)
+	_add_to_log("[color=#e89926]> %s[/color]" % telegraph_text)
 
 	# Perk: Hustler sees exact first move
 	if GameManager.has_perk("see_first_move") and turn_count == 0:
 		var all_actions := BoxingAction.create_all()
 		var first_action: BoxingAction = all_actions[opponent_next_actions[0]]
-		telegraph_label.text = "HUSTLER SENSE: %s!" % first_action.name
-		telegraph_label.add_theme_color_override("font_color", Color(0.9, 0.78, 0.3))
+		_add_to_log("[color=#e6c44c]HUSTLER SENSE: %s![/color]" % first_action.name)
 
 func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 	if not is_player_turn or round_over:
@@ -477,6 +488,7 @@ func _update_ui() -> void:
 	player_hp_label.text = "HP: %d/%d" % [GameManager.player_hp, GameManager.player_max_hp]
 	player_stamina_bar.max_value = GameManager.player_max_stamina
 	player_stamina_bar.value = GameManager.player_stamina
+	player_stamina_label.text = "STA: %d/%d" % [GameManager.player_stamina, GameManager.player_max_stamina]
 	player_name_label.text = GameManager.player_fighter.get("name", "Player")
 
 	opponent_hp_bar.max_value = GameManager.opponent_max_hp
@@ -484,6 +496,7 @@ func _update_ui() -> void:
 	opponent_hp_label.text = "HP: %d/%d" % [GameManager.opponent_hp, GameManager.opponent_max_hp]
 	opponent_stamina_bar.max_value = GameManager.opponent_max_stamina
 	opponent_stamina_bar.value = GameManager.opponent_stamina
+	opponent_stamina_label.text = "STA: %d/%d" % [GameManager.opponent_stamina, GameManager.opponent_max_stamina]
 	opponent_name_label.text = GameManager.current_opponent.get("name", "Opponent")
 
 	# Disable actions if not enough stamina

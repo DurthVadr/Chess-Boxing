@@ -1,7 +1,98 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scenes/tournament/opponent_reveal.gd" id="1"]
 [ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="player_portrait_frame"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.03, 0.04, 0.08, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.25, 0.45, 0.65, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="opponent_portrait_frame"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.08, 0.03, 0.03, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.75, 0.25, 0.22, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="flavor_strip_bg"]
+content_margin_left = 40.0
+content_margin_top = 10.0
+content_margin_right = 40.0
+content_margin_bottom = 10.0
+bg_color = Color(0.02, 0.02, 0.04, 0.94)
+border_width_top = 1
+border_color = Color(0.25, 0.22, 0.15, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="fight_normal"]
+content_margin_left = 40.0
+content_margin_top = 18.0
+content_margin_right = 40.0
+content_margin_bottom = 18.0
+bg_color = Color(0.06, 0.05, 0.10, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.88, 0.74, 0.24, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="fight_hover"]
+content_margin_left = 40.0
+content_margin_top = 18.0
+content_margin_right = 40.0
+content_margin_bottom = 18.0
+bg_color = Color(0.60, 0.48, 0.10, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1.0, 0.94, 0.42, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.9, 0.78, 0.3, 0.4)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="fight_pressed"]
+content_margin_left = 40.0
+content_margin_top = 18.0
+content_margin_right = 40.0
+content_margin_bottom = 18.0
+bg_color = Color(0.72, 0.58, 0.14, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1.0, 0.97, 0.52, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="OpponentReveal" type="Control"]
 layout_mode = 3
@@ -20,24 +111,147 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.14, 0.28, 0.2, 1)
+color = Color(0.04, 0.03, 0.07, 1)
 
-[node name="VSLabel" type="Label" parent="."]
+[node name="PlayerBg" type="ColorRect" parent="."]
 layout_mode = 1
-anchors_preset = 5
+anchors_preset = -1
+anchor_right = 0.49
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.10, 1)
+
+[node name="OpponentBg" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.51
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.10, 0.04, 0.05, 1)
+
+[node name="SplitLine" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = -1
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -60.0
-offset_top = 25.0
-offset_right = 60.0
-offset_bottom = 80.0
+anchor_bottom = 1.0
+offset_left = -2.0
+offset_right = 2.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 40
-theme_override_colors/font_color = Color(0.88, 0.35, 0.3, 1)
-text = "— VS —"
+grow_vertical = 2
+color = Color(0.85, 0.72, 0.25, 0.7)
+
+[node name="PlayerSide" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.04
+anchor_top = 0.12
+anchor_right = 0.46
+anchor_bottom = 0.78
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="PlayerPortraitFrame" type="PanelContainer" parent="PlayerSide"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("player_portrait_frame")
+
+[node name="PlayerPortrait" type="TextureRect" parent="PlayerSide/PlayerPortraitFrame"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(256, 256)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PlayerNameLabel" type="Label" parent="PlayerSide"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.92, 0.90, 0.82, 1)
+text = "???"
 horizontal_alignment = 1
 
-[node name="CardPanel" type="PanelContainer" parent="."]
+[node name="PlayerClassLabel" type="Label" parent="PlayerSide"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.30, 0.60, 0.72, 1)
+text = "CHALLENGER"
+horizontal_alignment = 1
+
+[node name="PlayerStatsLabel" type="Label" parent="PlayerSide"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.35, 0.75, 0.50, 1)
+text = "HP: 100 | STA: 100"
+horizontal_alignment = 1
+
+[node name="OpponentSide" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.54
+anchor_top = 0.12
+anchor_right = 0.96
+anchor_bottom = 0.78
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="OpponentPortraitFrame" type="PanelContainer" parent="OpponentSide"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("opponent_portrait_frame")
+
+[node name="OpponentPortrait" type="TextureRect" parent="OpponentSide/OpponentPortraitFrame"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(256, 256)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="OpponentNameLabel" type="Label" parent="OpponentSide"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.92, 0.80, 0.35, 1)
+text = "???"
+horizontal_alignment = 1
+
+[node name="ArchetypeLabel" type="Label" parent="OpponentSide"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.82, 0.28, 0.25, 1)
+text = "BRAWLER"
+horizontal_alignment = 1
+
+[node name="StatsLabel" type="Label" parent="OpponentSide"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.80, 0.35, 0.30, 1)
+text = "HP: 80 | STA: 90"
+horizontal_alignment = 1
+
+[node name="GimmickLabel" type="Label" parent="OpponentSide"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.85, 0.65, 0.25, 0.9)
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="VSLabel" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 8
@@ -45,60 +259,40 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -220.0
-offset_top = -220.0
-offset_right = 220.0
-offset_bottom = 110.0
+offset_left = -120.0
+offset_top = -80.0
+offset_right = 120.0
+offset_bottom = 80.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="VBox" type="VBoxContainer" parent="CardPanel"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="OpponentPortrait" type="TextureRect" parent="CardPanel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-custom_minimum_size = Vector2(128, 128)
-size_flags_horizontal = 4
-expand_mode = 1
-stretch_mode = 5
-
-[node name="OpponentNameLabel" type="Label" parent="CardPanel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 30
-theme_override_colors/font_color = Color(0.92, 0.8, 0.38, 1)
-text = "???"
+theme_override_font_sizes/font_size = 120
+theme_override_colors/font_color = Color(0.95, 0.85, 0.25, 1)
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0.6, 0.15, 0.10, 1)
+text = "VS"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="ArchetypeLabel" type="Label" parent="CardPanel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.75, 0.25, 0.25, 1)
-text = "BRAWLER"
-horizontal_alignment = 1
+[node name="FlavorStrip" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -58.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("flavor_strip_bg")
 
-[node name="Sep" type="HSeparator" parent="CardPanel/VBox"]
-layout_mode = 2
-
-[node name="FlavorLabel" type="Label" parent="CardPanel/VBox"]
+[node name="FlavorLabel" type="Label" parent="FlavorStrip"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
-theme_override_colors/font_color = Color(0.55, 0.55, 0.58, 1)
+theme_override_colors/font_color = Color(0.52, 0.50, 0.55, 1)
 text = "..."
 horizontal_alignment = 1
 autowrap_mode = 2
-
-[node name="StatsLabel" type="Label" parent="CardPanel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.7, 0.65, 0.55, 1)
-text = "HP: 80 | Stamina: 90"
-horizontal_alignment = 1
 
 [node name="FightBtn" type="Button" parent="."]
 unique_name_in_owner = true
@@ -108,11 +302,17 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -100.0
-offset_top = -58.0
-offset_right = 100.0
-offset_bottom = -15.0
+offset_left = -140.0
+offset_top = -120.0
+offset_right = 140.0
+offset_bottom = -68.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
+theme_override_colors/font_color = Color(0.92, 0.80, 0.28, 1)
+theme_override_colors/font_hover_color = Color(0.06, 0.05, 0.10, 1)
+theme_override_colors/font_pressed_color = Color(0.06, 0.05, 0.10, 1)
+theme_override_styles/normal = SubResource("fight_normal")
+theme_override_styles/hover = SubResource("fight_hover")
+theme_override_styles/pressed = SubResource("fight_pressed")
 text = "FIGHT!"

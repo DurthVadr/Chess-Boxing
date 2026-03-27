@@ -1,7 +1,82 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scenes/chess_phase/chess_phase.gd" id="1"]
 [ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="board_bezel"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.12, 0.10, 0.08, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.28, 0.22, 0.14, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="enemy_clock_bg"]
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+bg_color = Color(0.08, 0.03, 0.03, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.65, 0.22, 0.18, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="action_terminal_bg"]
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+bg_color = Color(0.04, 0.04, 0.06, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.22, 0.35, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="player_clock_bg"]
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+bg_color = Color(0.03, 0.07, 0.04, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.22, 0.58, 0.30, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="bottom_bar_bg"]
+content_margin_left = 20.0
+content_margin_top = 8.0
+content_margin_right = 20.0
+content_margin_bottom = 8.0
+bg_color = Color(0.04, 0.03, 0.06, 0.9)
+border_width_top = 1
+border_color = Color(0.25, 0.22, 0.15, 0.4)
 
 [node name="ChessPhase" type="Control"]
 layout_mode = 3
@@ -22,88 +97,146 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.05, 0.04, 0.08, 1)
 
-[node name="TopBar" type="HBoxContainer" parent="."]
+[node name="BoardArea" type="CenterContainer" parent="."]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 20.0
-offset_top = 10.0
-offset_right = -20.0
-offset_bottom = 55.0
-grow_horizontal = 2
-
-[node name="PhaseLabel" type="Label" parent="TopBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 26
-theme_override_colors/font_color = Color(0.65, 0.5, 0.85, 1)
-text = "CHESS ROUND"
-
-[node name="TimerLabel" type="Label" parent="TopBar"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 36
-theme_override_colors/font_color = Color(0.95, 0.92, 0.82, 1)
-text = "1:00"
-horizontal_alignment = 2
-
-[node name="CenterContainer" type="CenterContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = 60.0
-offset_bottom = -130.0
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.02
+anchor_right = 0.64
+anchor_bottom = 0.88
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="BoardGrid" type="GridContainer" parent="CenterContainer"]
+[node name="BoardBezel" type="PanelContainer" parent="BoardArea"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("board_bezel")
+
+[node name="BoardGrid" type="GridContainer" parent="BoardArea/BoardBezel"]
 unique_name_in_owner = true
 layout_mode = 2
 columns = 8
 
-[node name="BottomPanel" type="VBoxContainer" parent="."]
+[node name="RightPanel" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -125.0
-offset_right = -20.0
-offset_bottom = -10.0
+anchors_preset = -1
+anchor_left = 0.66
+anchor_top = 0.02
+anchor_right = 0.98
+anchor_bottom = 0.88
 grow_horizontal = 2
-grow_vertical = 0
-theme_override_constants/separation = 6
+grow_vertical = 2
+theme_override_constants/separation = 12
 
-[node name="PuzzleDescLabel" type="Label" parent="BottomPanel"]
-unique_name_in_owner = true
+[node name="EnemyClockPanel" type="PanelContainer" parent="RightPanel"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.55, 0.55, 0.6, 1)
-text = "Solve this puzzle!"
+theme_override_styles/panel = SubResource("enemy_clock_bg")
+
+[node name="EnemyClockVBox" type="VBoxContainer" parent="RightPanel/EnemyClockPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="EnemyClockTitle" type="Label" parent="RightPanel/EnemyClockPanel/EnemyClockVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.65, 0.22, 0.18, 0.8)
+text = "OPPONENT"
 horizontal_alignment = 1
 
-[node name="StatusLabel" type="Label" parent="BottomPanel"]
+[node name="EnemyClockLabel" type="Label" parent="RightPanel/EnemyClockPanel/EnemyClockVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-theme_override_colors/font_color = Color(0.95, 0.92, 0.82, 1)
-text = "Your move!"
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.82, 0.30, 0.25, 1)
+text = "CPU"
 horizontal_alignment = 1
 
-[node name="MistakeLabel" type="Label" parent="BottomPanel"]
+[node name="ActionTerminal" type="PanelContainer" parent="RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("action_terminal_bg")
+
+[node name="TerminalVBox" type="VBoxContainer" parent="RightPanel/ActionTerminal"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TerminalHeader" type="Label" parent="RightPanel/ActionTerminal/TerminalVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.45, 0.40, 0.55, 0.8)
+text = "MOVE LOG"
+
+[node name="PuzzleDescLabel" type="Label" parent="RightPanel/ActionTerminal/TerminalVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.75, 0.3, 0.3, 1)
-text = ""
-horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.55, 0.55, 0.60, 1)
+text = "Solve this puzzle!"
+autowrap_mode = 2
 
-[node name="BonusBar" type="ProgressBar" parent="BottomPanel"]
+[node name="StatusLabel" type="Label" parent="RightPanel/ActionTerminal/TerminalVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.95, 0.92, 0.82, 1)
+text = "Your move!"
+
+[node name="MistakeLabel" type="Label" parent="RightPanel/ActionTerminal/TerminalVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.75, 0.30, 0.30, 1)
+text = ""
+
+[node name="PlayerClockPanel" type="PanelContainer" parent="RightPanel"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("player_clock_bg")
+
+[node name="PlayerClockVBox" type="VBoxContainer" parent="RightPanel/PlayerClockPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PlayerClockTitle" type="Label" parent="RightPanel/PlayerClockPanel/PlayerClockVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.22, 0.58, 0.30, 0.8)
+text = "YOUR TIME"
+horizontal_alignment = 1
+
+[node name="TimerLabel" type="Label" parent="RightPanel/PlayerClockPanel/PlayerClockVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+theme_override_colors/font_color = Color(0.35, 0.85, 0.45, 1)
+text = "1:00"
+horizontal_alignment = 1
+
+[node name="BottomBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 0.90
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("bottom_bar_bg")
+
+[node name="BottomHBox" type="HBoxContainer" parent="BottomBar"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="RoundTimeLabel" type="Label" parent="BottomBar/BottomHBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.55, 0.50, 0.35, 0.85)
+text = "ROUND TIME"
+
+[node name="BonusBar" type="ProgressBar" parent="BottomBar/BottomHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 18)
 max_value = 100.0
 value = 100.0
 show_percentage = false

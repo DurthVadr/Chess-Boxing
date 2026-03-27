@@ -1,7 +1,83 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scenes/boxing_phase/boxing_phase.gd" id="1"]
 [ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="hp_fill"]
+bg_color = Color(0.22, 0.72, 0.32, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="hp_bg"]
+bg_color = Color(0.1, 0.16, 0.11, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="sta_fill"]
+bg_color = Color(0.82, 0.68, 0.18, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="sta_bg"]
+bg_color = Color(0.14, 0.12, 0.08, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="log_panel"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.05, 0.04, 0.08, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.25, 0.38, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="action_panel"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.06, 0.05, 0.1, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.25, 0.38, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="portrait_bg"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.08, 0.06, 0.13, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.35, 0.14, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [node name="BoxingPhase" type="Control"]
 layout_mode = 3
@@ -20,28 +96,38 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.22, 0.15, 0.14, 1)
+color = Color(0.06, 0.04, 0.09, 1)
 
 [node name="TopBar" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 15.0
+offset_left = 16.0
 offset_top = 8.0
-offset_right = -15.0
-offset_bottom = 40.0
+offset_right = -16.0
+offset_bottom = 42.0
 grow_horizontal = 2
 
 [node name="PhaseLabel" type="Label" parent="TopBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(0.88, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.82, 0.32, 0.26, 1)
 text = "BOXING ROUND"
+
+[node name="RoundTimerLabel" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.92, 0.88, 0.72, 1)
+text = "03:00"
+horizontal_alignment = 1
 
 [node name="BonusLabel" type="Label" parent="TopBar"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 14
 text = ""
 horizontal_alignment = 2
@@ -49,50 +135,60 @@ horizontal_alignment = 2
 [node name="Arena" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.05
-anchor_top = 0.08
-anchor_right = 0.95
-anchor_bottom = 0.52
+anchor_left = 0.0
+anchor_top = 0.07
+anchor_right = 1.0
+anchor_bottom = 0.50
+offset_left = 12.0
+offset_right = -12.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 30
-alignment = 1
+theme_override_constants/separation = 0
 
 [node name="PlayerPanel" type="VBoxContainer" parent="Arena"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.3
 theme_override_constants/separation = 4
 
 [node name="PlayerNameLabel" type="Label" parent="Arena/PlayerPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
-theme_override_colors/font_color = Color(0.4, 0.6, 0.9, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.52, 0.74, 0.92, 1)
 text = "Player"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
-[node name="PlayerSprite" type="TextureRect" parent="Arena/PlayerPanel"]
+[node name="PlayerPortrait" type="PanelContainer" parent="Arena/PlayerPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 148)
+theme_override_styles/panel = SubResource("portrait_bg")
+
+[node name="PlayerSprite" type="TextureRect" parent="Arena/PlayerPanel/PlayerPortrait"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(120, 160)
-size_flags_horizontal = 4
+custom_minimum_size = Vector2(0, 140)
+size_flags_horizontal = 3
 expand_mode = 1
 stretch_mode = 5
 
 [node name="PlayerHPBar" type="ProgressBar" parent="Arena/PlayerPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 18)
+custom_minimum_size = Vector2(0, 16)
 max_value = 100.0
 value = 100.0
 show_percentage = false
+theme_override_styles/fill = SubResource("hp_fill")
+theme_override_styles/background = SubResource("hp_bg")
 
 [node name="PlayerHPLabel" type="Label" parent="Arena/PlayerPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.45, 0.88, 0.48, 1)
 text = "HP: 100/100"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
 [node name="PlayerStaminaBar" type="ProgressBar" parent="Arena/PlayerPanel"]
 unique_name_in_owner = true
@@ -101,49 +197,61 @@ custom_minimum_size = Vector2(0, 10)
 max_value = 100.0
 value = 100.0
 show_percentage = false
+theme_override_styles/fill = SubResource("sta_fill")
+theme_override_styles/background = SubResource("sta_bg")
 
-[node name="VSLabel" type="Label" parent="Arena"]
+[node name="PlayerStaminaLabel" type="Label" parent="Arena/PlayerPanel"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 44
-theme_override_colors/font_color = Color(0.9, 0.75, 0.3, 1)
-text = "VS"
-vertical_alignment = 1
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.85, 0.72, 0.28, 1)
+text = "STA: 100/100"
+horizontal_alignment = 0
+
+[node name="CenterSpacer" type="Control" parent="Arena"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.4
 
 [node name="OpponentPanel" type="VBoxContainer" parent="Arena"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.3
 theme_override_constants/separation = 4
 
 [node name="OpponentNameLabel" type="Label" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
-theme_override_colors/font_color = Color(0.85, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.88, 0.36, 0.32, 1)
 text = "Opponent"
-horizontal_alignment = 1
+horizontal_alignment = 2
 
 [node name="OpponentSprite" type="TextureRect" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(120, 160)
-size_flags_horizontal = 4
+custom_minimum_size = Vector2(0, 148)
+size_flags_horizontal = 3
 expand_mode = 1
 stretch_mode = 5
 
 [node name="OpponentHPBar" type="ProgressBar" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 18)
+custom_minimum_size = Vector2(0, 16)
 max_value = 100.0
 value = 100.0
 show_percentage = false
+theme_override_styles/fill = SubResource("hp_fill")
+theme_override_styles/background = SubResource("hp_bg")
 
 [node name="OpponentHPLabel" type="Label" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.45, 0.88, 0.48, 1)
 text = "HP: 80/80"
-horizontal_alignment = 1
+horizontal_alignment = 2
 
 [node name="OpponentStaminaBar" type="ProgressBar" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true
@@ -152,29 +260,23 @@ custom_minimum_size = Vector2(0, 10)
 max_value = 100.0
 value = 100.0
 show_percentage = false
+theme_override_styles/fill = SubResource("sta_fill")
+theme_override_styles/background = SubResource("sta_bg")
 
-[node name="TelegraphLabel" type="Label" parent="."]
+[node name="OpponentStaminaLabel" type="Label" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.5
-anchor_top = 0.53
-anchor_right = 0.5
-offset_left = -220.0
-offset_right = 220.0
-offset_bottom = 28.0
-grow_horizontal = 2
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(0.9, 0.6, 0.15, 1)
-text = "..."
-horizontal_alignment = 1
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.85, 0.72, 0.28, 1)
+text = "STA: 100/100"
+horizontal_alignment = 2
 
 [node name="ComboLabel" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.5
-anchor_top = 0.48
+anchor_top = 0.46
 anchor_right = 0.5
 offset_left = -200.0
 offset_right = 200.0
@@ -185,45 +287,53 @@ theme_override_colors/font_color = Color(0.9, 0.78, 0.3, 1)
 text = ""
 horizontal_alignment = 1
 
-[node name="ActionPhaseLabel" type="Label" parent="."]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.5
-anchor_top = 0.555
-anchor_right = 0.5
-offset_left = -250.0
-offset_right = 250.0
-offset_bottom = 22.0
-grow_horizontal = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.75, 0.72, 0.6, 1)
-text = "SELECT ACTION 1"
-horizontal_alignment = 1
-
 [node name="BottomSection" type="HSplitContainer" parent="."]
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.02
-anchor_top = 0.58
-anchor_right = 0.98
-anchor_bottom = 0.98
+anchor_left = 0.01
+anchor_top = 0.52
+anchor_right = 0.99
+anchor_bottom = 0.99
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="CombatLog" type="RichTextLabel" parent="BottomSection"]
+[node name="LogPanel" type="PanelContainer" parent="BottomSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(380, 0)
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("log_panel")
+
+[node name="CombatLog" type="RichTextLabel" parent="BottomSection/LogPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(400, 0)
+size_flags_vertical = 3
 bbcode_enabled = true
 text = "The fight begins!
-"
+Squares up, weight shifts..."
 scroll_following = true
 
-[node name="ActionContainer" type="GridContainer" parent="BottomSection"]
+[node name="ActionPanel" type="PanelContainer" parent="BottomSection"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("action_panel")
+
+[node name="ActionLayout" type="VBoxContainer" parent="BottomSection/ActionPanel"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="ActionPhaseLabel" type="Label" parent="BottomSection/ActionPanel/ActionLayout"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(320, 0)
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.82, 0.78, 0.62, 1)
+text = "SELECT ACTION 1"
+horizontal_alignment = 1
+
+[node name="ActionContainer" type="GridContainer" parent="BottomSection/ActionPanel/ActionLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
 columns = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
