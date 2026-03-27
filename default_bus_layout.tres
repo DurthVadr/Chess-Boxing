@@ -1,8 +1,7 @@
-[gd_resource type="AudioBusLayout" format=3]
+[gd_resource type="AudioBusLayout" format=3 uid="uid://de3y6t3hy1trr"]
 
 [sub_resource type="AudioEffectLowPassFilter" id="1"]
 cutoff_hz = 20500.0
-resonance = 0.5
 
 [sub_resource type="AudioEffectLimiter" id="2"]
 

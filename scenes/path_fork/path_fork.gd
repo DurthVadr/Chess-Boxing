@@ -23,7 +23,7 @@ func _build_path_cards() -> void:
 
 func _create_path_card(opp: Dictionary) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(300, 220)
+	panel.custom_minimum_size = Vector2(300, 340)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
@@ -34,6 +34,18 @@ func _create_path_card(opp: Dictionary) -> PanelContainer:
 	name_label.add_theme_color_override("font_color", Color(0.92, 0.8, 0.38))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(name_label)
+
+	# Opponent portrait
+	var sprite_base: String = opp.get("sprite_base", "")
+	if sprite_base != "":
+		var portrait := TextureRect.new()
+		portrait.custom_minimum_size = Vector2(96, 96)
+		portrait.expand_mode = 1
+		portrait.stretch_mode = 5
+		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
+		portrait.texture = load(tex_path)
+		vbox.add_child(portrait)
 
 	var archetype_label := Label.new()
 	archetype_label.text = opp.get("archetype", "").to_upper()

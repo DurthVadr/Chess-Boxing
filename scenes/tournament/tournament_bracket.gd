@@ -19,6 +19,18 @@ func _build_bracket() -> void:
 		var opp := GameManager._get_opponent_by_id(opp_id)
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 10)
+
+		# Add small portrait for known opponents
+		var sprite_base: String = opp.get("sprite_base", "")
+		if sprite_base != "" and i <= GameManager.current_opponent_index:
+			var portrait := TextureRect.new()
+			portrait.custom_minimum_size = Vector2(40, 40)
+			portrait.expand_mode = 1
+			portrait.stretch_mode = 5
+			var tex_path := "res://assets/sprites/opponents/%s_64.png" % sprite_base
+			portrait.texture = load(tex_path)
+			row.add_child(portrait)
 
 		var label := Label.new()
 		label.custom_minimum_size = Vector2(450, 50)

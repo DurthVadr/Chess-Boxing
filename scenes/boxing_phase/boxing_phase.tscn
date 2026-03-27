@@ -71,12 +71,13 @@ theme_override_colors/font_color = Color(0.4, 0.6, 0.9, 1)
 text = "Player"
 horizontal_alignment = 1
 
-[node name="PlayerSprite" type="ColorRect" parent="Arena/PlayerPanel"]
+[node name="PlayerSprite" type="TextureRect" parent="Arena/PlayerPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(120, 160)
 size_flags_horizontal = 4
-color = Color(0.35, 0.5, 0.78, 1)
+expand_mode = 1
+stretch_mode = 5
 
 [node name="PlayerHPBar" type="ProgressBar" parent="Arena/PlayerPanel"]
 unique_name_in_owner = true
@@ -121,12 +122,13 @@ theme_override_colors/font_color = Color(0.85, 0.3, 0.3, 1)
 text = "Opponent"
 horizontal_alignment = 1
 
-[node name="OpponentSprite" type="ColorRect" parent="Arena/OpponentPanel"]
+[node name="OpponentSprite" type="TextureRect" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(120, 160)
 size_flags_horizontal = 4
-color = Color(0.78, 0.35, 0.3, 1)
+expand_mode = 1
+stretch_mode = 5
 
 [node name="OpponentHPBar" type="ProgressBar" parent="Arena/OpponentPanel"]
 unique_name_in_owner = true

@@ -14,8 +14,8 @@ extends Control
 @onready var combat_log: RichTextLabel = %CombatLog
 @onready var action_container: GridContainer = %ActionContainer
 @onready var bonus_label: Label = %BonusLabel
-@onready var player_sprite: ColorRect = %PlayerSprite
-@onready var opponent_sprite: ColorRect = %OpponentSprite
+@onready var player_sprite: TextureRect = %PlayerSprite
+@onready var opponent_sprite: TextureRect = %OpponentSprite
 @onready var combo_label: Label = %ComboLabel
 @onready var action_phase_label: Label = %ActionPhaseLabel
 
@@ -52,6 +52,12 @@ func _ready() -> void:
 
 	combo_label.text = ""
 	action_phase_label.text = "SELECT ACTION 1"
+
+	# Load opponent sprite
+	var sprite_base: String = GameManager.current_opponent.get("sprite_base", "")
+	if sprite_base != "":
+		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
+		opponent_sprite.texture = load(tex_path)
 
 	_update_ui()
 	_build_action_buttons()
@@ -125,11 +131,9 @@ func _build_tactic_hand() -> void:
 
 	for i in GameManager.tactic_hand.size():
 		var card: Dictionary = GameManager.tactic_hand[i]
-		var btn := Button.new()
-		btn.text = card.get("name", "?")
-		btn.custom_minimum_size = Vector2(90, 36)
-		btn.add_theme_font_size_override("font_size", 12)
-		btn.tooltip_text = TacticCardSystem.get_card_combat_text(card)
+
+		var panel := PanelContainer.new()
+		panel.custom_minimum_size = Vector2(80, 100)
 
 		var style := StyleBoxFlat.new()
 		var shop_type: String = card.get("shop", "study")
@@ -146,14 +150,47 @@ func _build_tactic_hand() -> void:
 		style.border_width_top = 2
 		style.border_width_bottom = 2
 		style.border_color = Color(0.9, 0.75, 0.3, 0.6)
-		btn.add_theme_stylebox_override("normal", style)
+		panel.add_theme_stylebox_override("panel", style)
+
+		var vbox := VBoxContainer.new()
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		vbox.add_theme_constant_override("separation", 2)
+
+		# Card art
+		var art := TextureRect.new()
+		art.custom_minimum_size = Vector2(64, 64)
+		art.expand_mode = 1
+		art.stretch_mode = 5
+		var art_path := "res://assets/sprites/cards/tactic_%s.png" % card.get("effect", "")
+		if ResourceLoader.exists(art_path):
+			art.texture = load(art_path)
+		vbox.add_child(art)
+
+		# Card name
+		var name_label := Label.new()
+		name_label.text = card.get("name", "?")
+		name_label.add_theme_font_size_override("font_size", 10)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(name_label)
+
+		panel.add_child(vbox)
+
+		# Click button overlay
+		var btn := Button.new()
+		btn.flat = true
+		btn.anchors_preset = Control.PRESET_FULL_RECT
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		btn.tooltip_text = TacticCardSystem.get_card_combat_text(card)
 
 		if tactic_played_this_turn:
 			btn.disabled = true
 			btn.tooltip_text = "1 tactic per turn"
+			panel.modulate = Color(0.5, 0.5, 0.5)
 
 		btn.pressed.connect(_on_play_tactic.bind(i))
-		tactic_container.add_child(btn)
+		panel.add_child(btn)
+
+		tactic_container.add_child(panel)
 
 func _on_play_tactic(index: int) -> void:
 	if not is_player_turn or round_over or tactic_played_this_turn:

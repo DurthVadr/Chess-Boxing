@@ -126,6 +126,19 @@ func _create_item_card(item: Dictionary, shop_type: String, index: int) -> Panel
 	cat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(cat_label)
 
+	# Tactic card art (if applicable)
+	if category == "tactic_card":
+		var art := TextureRect.new()
+		art.custom_minimum_size = Vector2(48, 48)
+		art.expand_mode = 1
+		art.stretch_mode = 5
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var effect: String = item.get("effect", "")
+		var art_path := "res://assets/sprites/cards/tactic_%s.png" % effect
+		if ResourceLoader.exists(art_path):
+			art.texture = load(art_path)
+		vbox.add_child(art)
+
 	# Item name + cost
 	var name_row := HBoxContainer.new()
 	name_row.alignment = BoxContainer.ALIGNMENT_CENTER

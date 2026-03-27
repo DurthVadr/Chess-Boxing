@@ -2,6 +2,7 @@
   {
     "id": "opponent_1",
     "name": "Vinnie 'The Pawn' Kowalski",
+    "sprite_base": "vinnie",
     "archetype": "brawler",
     "hp": 60,
     "stamina": 80,
@@ -17,6 +18,7 @@
   {
     "id": "opponent_suki",
     "name": "Suki 'The Knight' Tanaka",
+    "sprite_base": "suki",
     "archetype": "glass_cannon",
     "hp": 50,
     "stamina": 110,
@@ -37,6 +39,7 @@
   {
     "id": "opponent_2",
     "name": "Elena 'The Bishop' Petrov",
+    "sprite_base": "elena",
     "archetype": "technician",
     "hp": 80,
     "stamina": 90,
@@ -57,6 +60,7 @@
   {
     "id": "opponent_marcus",
     "name": "Marcus 'The Rook' Williams",
+    "sprite_base": "marcus",
     "archetype": "turtle",
     "hp": 120,
     "stamina": 70,
@@ -78,6 +82,7 @@
   {
     "id": "opponent_3",
     "name": "Magnus 'The Grandmaster' Thunderfist",
+    "sprite_base": "magnus",
     "archetype": "boss",
     "hp": 100,
     "stamina": 100,

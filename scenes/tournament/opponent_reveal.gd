@@ -3,6 +3,7 @@ extends Control
 ## Opponent Reveal — Dramatic card flip showing opponent info
 
 @onready var card_panel: PanelContainer = %CardPanel
+@onready var opponent_portrait: TextureRect = %OpponentPortrait
 @onready var opponent_name_label: Label = %OpponentNameLabel
 @onready var archetype_label: Label = %ArchetypeLabel
 @onready var flavor_label: Label = %FlavorLabel
@@ -16,6 +17,13 @@ func _ready() -> void:
 	fight_btn.visible = false
 
 	var opp := GameManager.current_opponent
+
+	# Load opponent portrait
+	var sprite_base: String = opp.get("sprite_base", "")
+	if sprite_base != "":
+		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
+		opponent_portrait.texture = load(tex_path)
+
 	opponent_name_label.text = opp.get("name", "???")
 	archetype_label.text = opp.get("archetype", "unknown").to_upper()
 	flavor_label.text = opp.get("flavor_text", "")
