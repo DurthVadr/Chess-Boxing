@@ -1,6 +1,86 @@
-[gd_scene load_steps=2 format=3 uid="uid://shop_scene_001"]
+[gd_scene load_steps=8 format=3 uid="uid://shop_scene_001"]
 
 [ext_resource type="Script" path="res://scenes/shop/shop.gd" id="1"]
+[ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="build_panel"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.07, 0.05, 0.10, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.22, 0.38, 0.60)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
+[sub_resource type="StyleBoxFlat" id="leave_normal"]
+content_margin_left = 32.0
+content_margin_top = 14.0
+content_margin_right = 32.0
+content_margin_bottom = 14.0
+bg_color = Color(0.06, 0.05, 0.10, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.88, 0.74, 0.24, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="leave_hover"]
+content_margin_left = 32.0
+content_margin_top = 14.0
+content_margin_right = 32.0
+content_margin_bottom = 14.0
+bg_color = Color(0.58, 0.46, 0.10, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1.0, 0.94, 0.42, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.9, 0.78, 0.3, 0.45)
+shadow_size = 10
+shadow_offset = Vector2(0, 0)
+
+[sub_resource type="StyleBoxFlat" id="leave_pressed"]
+content_margin_left = 32.0
+content_margin_top = 14.0
+content_margin_right = 32.0
+content_margin_bottom = 14.0
+bg_color = Color(0.72, 0.58, 0.14, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1.0, 0.97, 0.52, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="leave_focus"]
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9, 0.78, 0.3, 0.55)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="Shop" type="Control"]
 layout_mode = 3
@@ -9,6 +89,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2")
 script = ExtResource("1")
 
 [node name="BG" type="ColorRect" parent="."]
@@ -16,137 +97,228 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.051, 0.039, 0.078, 1)
+color = Color(0.051, 0.043, 0.078, 1)
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
+[node name="MainMargin" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 14
 
-[node name="MainVBox" type="VBoxContainer" parent="MarginContainer"]
+[node name="MainVBox" type="VBoxContainer" parent="MainMargin"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 10
 
-[node name="HeaderRow" type="HBoxContainer" parent="MarginContainer/MainVBox"]
+[node name="HeaderArea" type="VBoxContainer" parent="MainMargin/MainVBox"]
 layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 32
+theme_override_constants/separation = 3
 
-[node name="TitleLabel" type="Label" parent="MarginContainer/MainVBox/HeaderRow"]
-unique_name_in_owner = true
+[node name="TitleLabel" type="Label" parent="MainMargin/MainVBox/HeaderArea"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.9, 0.78, 0.35, 1)
 text = "THE CORNER"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 28
-theme_override_colors/font_color = Color(0.9, 0.75, 0.3, 1)
 
-[node name="RepLabel" type="Label" parent="MarginContainer/MainVBox/HeaderRow"]
+[node name="RepBreakdownLabel" type="Label" parent="MainMargin/MainVBox/HeaderArea"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Rep: 0"
-horizontal_alignment = 2
-theme_override_font_sizes/font_size = 20
-theme_override_colors/font_color = Color(0.9, 0.78, 0.3, 1)
-
-[node name="HandLabel" type="Label" parent="MarginContainer/MainVBox/HeaderRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Tactic Hand: 0/3"
-horizontal_alignment = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.7, 0.7, 0.65, 1)
-
-[node name="RepBreakdownLabel" type="Label" parent="MarginContainer/MainVBox"]
-unique_name_in_owner = true
-layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.6, 0.6, 0.55, 0.55)
 text = ""
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.6, 0.6, 0.55, 1)
 
-[node name="ShopsRow" type="HBoxContainer" parent="MarginContainer/MainVBox"]
+[node name="ColumnsRow" type="HBoxContainer" parent="MainMargin/MainVBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 24
+theme_override_constants/separation = 14
 
-[node name="StudySide" type="VBoxContainer" parent="MarginContainer/MainVBox/ShopsRow"]
+[node name="LeftColumn" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 0
 
-[node name="StudyHeader" type="Label" parent="MarginContainer/MainVBox/ShopsRow/StudySide"]
+[node name="BuildPanel" type="PanelContainer" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn"]
 layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("build_panel")
+
+[node name="BuildVBox" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RepBigLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+theme_override_colors/font_color = Color(0.92, 0.80, 0.28, 1)
+text = "0"
+horizontal_alignment = 1
+
+[node name="RepCaption" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.55, 0.50, 0.30, 0.80)
+text = "REP"
+horizontal_alignment = 1
+
+[node name="HSep1" type="HSeparator" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
+layout_mode = 2
+modulate = Color(0.4, 0.35, 0.55, 0.5)
+
+[node name="StatsGrid" type="GridContainer" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+
+[node name="HandKey" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.55, 0.55, 0.60, 0.80)
+text = "CARDS"
+
+[node name="HandStatLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.88, 0.85, 0.78, 1)
+text = "0 / 3"
+horizontal_alignment = 2
+
+[node name="HpKey" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.55, 0.55, 0.60, 0.80)
+text = "MAX HP"
+
+[node name="HpStatLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.88, 0.85, 0.78, 1)
+text = "100"
+horizontal_alignment = 2
+
+[node name="StaminaKey" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.55, 0.55, 0.60, 0.80)
+text = "MAX STM"
+
+[node name="StaminaStatLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.88, 0.85, 0.78, 1)
+text = "100"
+horizontal_alignment = 2
+
+[node name="HSep2" type="HSeparator" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
+layout_mode = 2
+modulate = Color(0.4, 0.35, 0.55, 0.5)
+
+[node name="PerksHeader" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.55, 0.50, 0.30, 0.80)
+text = "ACTIVE PERKS"
+horizontal_alignment = 1
+
+[node name="PerksScroll" type="ScrollContainer" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PerksContainer" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/PerksScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="CenterColumn" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.5
+theme_override_constants/separation = 6
+
+[node name="StudyHeader" type="Label" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.38, 0.54, 0.82, 1)
 text = "THE STUDY"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 20
-theme_override_colors/font_color = Color(0.3, 0.42, 0.68, 1)
 
-[node name="StudySubtitle" type="Label" parent="MarginContainer/MainVBox/ShopsRow/StudySide"]
+[node name="StudySubtitle" type="Label" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.40, 0.46, 0.58, 0.70)
 text = "Chess training & tactic cards"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
 
-[node name="StudyScroll" type="ScrollContainer" parent="MarginContainer/MainVBox/ShopsRow/StudySide"]
+[node name="StudyScroll" type="ScrollContainer" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StudyContainer" type="VBoxContainer" parent="MarginContainer/MainVBox/ShopsRow/StudySide/StudyScroll"]
+[node name="StudyContainer" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn/StudyScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
-[node name="Divider" type="VSeparator" parent="MarginContainer/MainVBox/ShopsRow"]
-layout_mode = 2
-
-[node name="GymSide" type="VBoxContainer" parent="MarginContainer/MainVBox/ShopsRow"]
+[node name="RightColumn" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+size_flags_stretch_ratio = 1.5
+theme_override_constants/separation = 6
 
-[node name="GymHeader" type="Label" parent="MarginContainer/MainVBox/ShopsRow/GymSide"]
+[node name="GymHeader" type="Label" parent="MainMargin/MainVBox/ColumnsRow/RightColumn"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.80, 0.36, 0.32, 1)
 text = "THE GYM"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 20
-theme_override_colors/font_color = Color(0.68, 0.3, 0.28, 1)
 
-[node name="GymSubtitle" type="Label" parent="MarginContainer/MainVBox/ShopsRow/GymSide"]
+[node name="GymSubtitle" type="Label" parent="MainMargin/MainVBox/ColumnsRow/RightColumn"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.58, 0.40, 0.38, 0.70)
 text = "Boxing training & power-ups"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(0.65, 0.5, 0.48, 1)
 
-[node name="GymScroll" type="ScrollContainer" parent="MarginContainer/MainVBox/ShopsRow/GymSide"]
+[node name="GymScroll" type="ScrollContainer" parent="MainMargin/MainVBox/ColumnsRow/RightColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="GymContainer" type="VBoxContainer" parent="MarginContainer/MainVBox/ShopsRow/GymSide/GymScroll"]
+[node name="GymContainer" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow/RightColumn/GymScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
-[node name="PerkRemovalPanel" type="PanelContainer" parent="MarginContainer/MainVBox"]
+[node name="PerkRemovalPanel" type="PanelContainer" parent="MainMargin/MainVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 visible = false
 
-[node name="BottomRow" type="HBoxContainer" parent="MarginContainer/MainVBox"]
+[node name="BottomRow" type="HBoxContainer" parent="MainMargin/MainVBox"]
 layout_mode = 2
 alignment = 1
 
-[node name="ContinueBtn" type="Button" parent="MarginContainer/MainVBox/BottomRow"]
+[node name="ContinueBtn" type="Button" parent="MainMargin/MainVBox/BottomRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(200, 48)
+custom_minimum_size = Vector2(320, 0)
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.92, 0.80, 0.28, 1)
+theme_override_colors/font_hover_color = Color(0.06, 0.05, 0.10, 1)
+theme_override_colors/font_pressed_color = Color(0.06, 0.05, 0.10, 1)
+theme_override_styles/normal = SubResource("leave_normal")
+theme_override_styles/hover = SubResource("leave_hover")
+theme_override_styles/pressed = SubResource("leave_pressed")
+theme_override_styles/focus = SubResource("leave_focus")
 text = "LEAVE THE CORNER"
-theme_override_font_sizes/font_size = 16

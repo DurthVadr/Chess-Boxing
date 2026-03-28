@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(godot --path . --headless --quit)",
+      "Bash(where godot:*)",
+      "Read(//c//**)",
+      "Bash(gdlint:*)",
+      "Bash(python3:*)",
+      "Bash(find /c/Proj/Chess-Boxing -name *boxing* -type f)"
+    ]
+  }
+}

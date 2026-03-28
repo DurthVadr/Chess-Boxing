@@ -382,6 +382,209 @@ func _resolve_action_pair(
 
 	return result
 
+# =============================================================================
+# Sequential QTE Resolution (v0.3)
+# =============================================================================
+
+## Resolve a single attack action with a QTE modifier.
+## attacker_action: the attack being thrown (JAB, CROSS, HOOK, UPPERCUT)
+## defender_action: what the defender chose (BLOCK, DODGE, CLINCH, or an attack — no defense)
+## qte_result: offensive → "perfect"/"partial"/"critical"/"normal"/"miss"
+##             defensive → "perfect_defense"/"failed_defense"
+##             clinch   → "clinch_won"/"clinch_lost"
+## is_player_attacking: true = player attacks opponent, false = opponent attacks player
+## Returns: { damage: int, stamina_cost_attacker: int, stamina_cost_defender: int,
+##            blocked: bool, dodged: bool, clinch: bool, clinch_won: bool, messages: Array }
+func resolve_single_action(
+	attacker_action: BoxingAction.ActionType,
+	defender_action: BoxingAction.ActionType,
+	qte_result: String,
+	is_player_attacking: bool,
+	player_stats: Dictionary,
+	opponent_stats: Dictionary,
+) -> Dictionary:
+	var atk_act: BoxingAction = actions[attacker_action]
+	var def_act: BoxingAction = actions[defender_action]
+
+	var result := {
+		"damage": 0,
+		"stamina_cost_attacker": 0,
+		"stamina_cost_defender": 0,
+		"blocked": false,
+		"dodged": false,
+		"clinch": false,
+		"clinch_won": false,
+		"messages": [],
+	}
+
+	# --- Clinch check (uses QTEClinch result) ---
+	if attacker_action == BoxingAction.ActionType.CLINCH or defender_action == BoxingAction.ActionType.CLINCH:
+		result.clinch = true
+		var won_clinch := qte_result == "clinch_won"
+		result.clinch_won = won_clinch
+
+		if is_player_attacking and attacker_action == BoxingAction.ActionType.CLINCH:
+			# Player initiated clinch
+			var base_recovery := 20
+			if GameManager.has_perk("clinch_stamina_bonus"):
+				base_recovery = int(GameManager.get_perk_raw_value("clinch_stamina_bonus"))
+			if won_clinch:
+				result.stamina_cost_attacker = -base_recovery
+				result.stamina_cost_defender = -10  # opponent gets less
+				result.messages.append("[color=gold]Clinch won! Full recovery![/color]")
+			else:
+				@warning_ignore("integer_division")
+				result.stamina_cost_attacker = -(base_recovery / 2)
+				result.stamina_cost_defender = -20  # opponent gets full
+				result.messages.append("Clinch lost! Opponent recovers more.")
+		elif not is_player_attacking and attacker_action == BoxingAction.ActionType.CLINCH:
+			# Opponent initiated clinch — player defends via QTE
+			if won_clinch:
+				result.stamina_cost_defender = -20  # player (defender) gets full
+				result.stamina_cost_attacker = -10
+				result.messages.append("[color=gold]Fought out of the clinch![/color]")
+			else:
+				result.stamina_cost_defender = -10  # player gets less
+				result.stamina_cost_attacker = -20
+				result.messages.append("Clinch lost! Opponent recovers.")
+		else:
+			# Defender used clinch — both recover some
+			result.stamina_cost_attacker = 0
+			result.stamina_cost_defender = -20
+			result.messages.append("Clinch!")
+		return result
+
+	# --- Non-attack action (BLOCK, DODGE) used as "attack" slot — no damage ---
+	if atk_act.damage <= 0:
+		result.stamina_cost_attacker = _calculate_stamina_cost(atk_act, is_player_attacking)
+		if attacker_action == BoxingAction.ActionType.BLOCK:
+			result.stamina_cost_attacker = atk_act.stamina_cost  # negative = recovery
+		return result
+
+	# --- Calculate base damage ---
+	var stats := player_stats if is_player_attacking else opponent_stats
+	var raw_damage := _calculate_attack_damage(atk_act, stats, is_player_attacking)
+	var atk_stam := _calculate_stamina_cost(atk_act, is_player_attacking)
+	result.stamina_cost_attacker = atk_stam
+
+	# Defender stamina cost
+	if def_act.stamina_cost > 0:
+		result.stamina_cost_defender = _calculate_stamina_cost(def_act, not is_player_attacking)
+	elif def_act.stamina_cost < 0:
+		result.stamina_cost_defender = def_act.stamina_cost
+
+	var damage := raw_damage
+
+	# --- Offensive QTE (player attacking) ---
+	if is_player_attacking:
+		match qte_result:
+			"perfect":
+				# Pendulum perfect — Jab/Cross: +50% damage, guaranteed hit
+				damage = int(float(damage) * 1.5)
+				result.messages.append("[color=gold]PERFECT %s! x1.5 damage![/color]" % atk_act.name)
+			"partial":
+				# Pendulum partial — Jab/Cross: +20% damage
+				damage = int(float(damage) * 1.2)
+				result.messages.append("[color=yellow]GOOD %s! x1.2 damage![/color]" % atk_act.name)
+			"critical":
+				# Convergence critical — Hook/Uppercut: +75% damage, guaranteed hit
+				damage = int(float(damage) * 1.75)
+				result.messages.append("[color=gold]CRITICAL %s! x1.75 damage![/color]" % atk_act.name)
+			"normal":
+				# Convergence normal — Hook/Uppercut: +25% damage
+				damage = int(float(damage) * 1.25)
+				result.messages.append("[color=yellow]%s connects! x1.25 damage![/color]" % atk_act.name)
+			_:
+				pass  # "miss" — raw damage, standard defense applies
+
+		# Check if QTE grants guaranteed hit (skip opponent dodge)
+		var qte_guaranteed := qte_result in ["perfect", "critical"]
+
+		# Resolve opponent defense
+		if defender_action == BoxingAction.ActionType.DODGE:
+			if player_stats.get("tactic_dodge_auto_fail", false):
+				result.messages.append("[color=gold]En Passant! Dodge fails![/color]")
+				var mult: float = player_stats.get("tactic_en_passant_multiplier", 1.0)
+				if mult > 1.0:
+					damage = int(float(damage) * mult)
+			elif player_stats.get("tactic_guaranteed_hit", false):
+				result.messages.append("[color=gold]Sacrifice! Guaranteed hit![/color]")
+			elif qte_guaranteed:
+				pass  # Perfect/Critical = guaranteed hit
+			else:
+				var dodge_chance := _get_dodge_chance(atk_act.speed, false)
+				if randf() < dodge_chance:
+					result.dodged = true
+					damage = 0
+					result.messages.append("Opponent dodged your %s!" % atk_act.name)
+		elif defender_action == BoxingAction.ActionType.BLOCK:
+			if player_stats.get("tactic_back_rank", false) and attacker_action == BoxingAction.ActionType.UPPERCUT:
+				result.messages.append("[color=gold]Back Rank! Defense pierced![/color]")
+			elif player_stats.get("tactic_guaranteed_hit", false):
+				result.blocked = true
+				damage = maxi(1, int(float(damage) * 0.75))
+			else:
+				result.blocked = true
+				damage = maxi(1, damage / 2)
+				result.messages.append("Opponent blocked! Damage reduced.")
+
+	# --- Defensive QTE (opponent attacking, player defends) ---
+	else:
+		if qte_result == "perfect_defense":
+			# Knight's Leap success — full mitigation
+			result.damage = 0
+			result.stamina_cost_defender = 0
+			if defender_action == BoxingAction.ActionType.BLOCK:
+				result.blocked = true
+				result.messages.append("[color=cyan]PERFECT BLOCK! No damage![/color]")
+			elif defender_action == BoxingAction.ActionType.DODGE:
+				result.dodged = true
+				result.messages.append("[color=cyan]PERFECT DODGE! Untouchable![/color]")
+			else:
+				result.dodged = true
+				result.messages.append("[color=cyan]PERFECT TIMING! Slipped the punch![/color]")
+			return result
+		else:
+			# failed_defense — reduced mitigation
+			if defender_action == BoxingAction.ActionType.DODGE:
+				result.messages.append("Dodge failed!")
+			elif defender_action == BoxingAction.ActionType.BLOCK:
+				result.blocked = true
+				var reduction := 0.3
+				if GameManager.has_perk("block_damage_reduction"):
+					reduction = GameManager.get_perk_raw_value("block_damage_reduction") * 0.6
+				damage = maxi(1, int(float(damage) * (1.0 - reduction)))
+				result.messages.append("Block partially held!")
+
+	# --- Tactic: Discovery (BLOCK reflects damage) ---
+	if not is_player_attacking and defender_action == BoxingAction.ActionType.BLOCK:
+		var block_dmg_ratio: float = player_stats.get("tactic_block_deals_damage", 0.0)
+		if block_dmg_ratio > 0.0 and damage > 0:
+			var reflect := int(float(damage) * block_dmg_ratio)
+			if reflect > 0:
+				result["reflect_damage"] = reflect
+				result.messages.append("[color=gold]Discovery! Block reflects %d![/color]" % reflect)
+
+	# --- Perk: damage reduction (heat-scaled) — player defending only ---
+	if not is_player_attacking:
+		var dmg_red := int(GameManager.get_perk_scaled_value("damage_reduction", 0.0))
+		if dmg_red > 0 and damage > 0:
+			damage = maxi(1, damage - dmg_red)
+
+	# --- Blood Sacrifice stacks — player attacking only ---
+	if is_player_attacking and GameManager.blood_sacrifice_stacks > 0 and damage > 0:
+		damage += GameManager.blood_sacrifice_stacks
+
+	result.damage = damage
+	if damage > 0:
+		if is_player_attacking:
+			result.messages.append("%s deals %d!" % [atk_act.name, damage])
+		else:
+			result.messages.append("Opp %s deals %d!" % [atk_act.name, damage])
+
+	return result
+
+
 ## Apply combo bonus effects to the action results.
 func _apply_combo_to_result(combo: Dictionary, result1: Dictionary, result2: Dictionary, is_player: bool) -> void:
 	var effect: String = combo.get("effect", "")

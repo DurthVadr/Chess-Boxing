@@ -9,7 +9,7 @@ signal run_ended(won: bool)
 signal set_bonus_activated(bonus: Dictionary)
 
 # --- Enums ---
-enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, PERK_DRAFT, SHOP, PATH_FORK, RESULTS }
+enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, PERK_DRAFT, SHOP, RESULTS }
 enum FightResult { IN_PROGRESS, PLAYER_WIN, PLAYER_LOSE }
 
 # --- Run State ---
@@ -54,8 +54,8 @@ var active_set_bonuses: Array = []
 var blood_sacrifice_stacks: int = 0
 var queens_gambit_active: bool = false  # Next draft = 5 Rare choices
 var opponent_perks: Array = []  # Boss perks (Magnus only)
-var chosen_path: String = ""  # "elena" or "marcus"
-var fight_order: Array = []  # Ordered opponent IDs for this run
+var fight_order: Array = []         # Ordered opponent IDs for this run
+var fight_order_complete: bool = false  # True once the position-3 boss has been selected
 
 # --- Shop & Tactic Cards ---
 var player_rep: int = 0                    # Shared currency
@@ -140,7 +140,6 @@ func start_new_run(fighter: Dictionary) -> void:
 	heat = 1.0
 	previous_heat = 0.0
 	opponent_perks.clear()
-	chosen_path = ""
 
 	# Shop & tactic card reset
 	player_rep = 0
@@ -156,20 +155,20 @@ func start_new_run(fighter: Dictionary) -> void:
 	has_scouting_report = false
 	pending_perk_removal = false
 
-	# Build initial fight order (first 2 opponents are mandatory)
+	# Build initial fight order — the first 2 mandatory opponents (position 1 & 2)
 	fight_order.clear()
+	fight_order_complete = false
 	for opp in all_opponents:
 		var pos: int = int(opp.get("fight_position", 99))
-		var path: String = opp.get("path", "both")
-		if pos <= 2 and (path == "both" or path == ""):
+		if pos <= 2:
 			fight_order.append(opp.get("id", ""))
 	fight_order.sort_custom(func(a: String, b: String) -> bool:
 		var a_opp := _get_opponent_by_id(a)
 		var b_opp := _get_opponent_by_id(b)
 		return int(a_opp.get("fight_position", 99)) < int(b_opp.get("fight_position", 99))
 	)
-	# Remaining opponents added after path fork
-	total_opponents = 5
+	# The position-3 boss + final boss are appended by select_random_boss() after SF
+	total_opponents = 4
 
 	_reset_stats()
 	change_phase(GamePhase.TOURNAMENT)
@@ -192,23 +191,72 @@ func _get_opponent_by_id(opp_id: String) -> Dictionary:
 			return opp
 	return {}
 
-func set_path_choice(path: String) -> void:
-	chosen_path = path
-	# Add remaining opponents based on chosen path
+## Automatically picks the position-3 semi-final boss using drafted perk tags, then
+## appends any remaining "both"-path opponents and finalises the fight_order.
+## Called by shop.gd after the post-SF shop visit.
+func select_random_boss() -> void:
+	# Gather candidates at fight_position == 3 not already in the run
+	var candidates: Array = []
+	for opp in all_opponents:
+		if int(opp.get("fight_position", 99)) == 3 and opp.get("id", "") not in fight_order:
+			candidates.append(opp)
+
+	if candidates.is_empty():
+		_finalize_fight_order()
+		return
+
+	var chosen: Dictionary
+	if candidates.size() == 1:
+		chosen = candidates[0]
+	else:
+		# Weight by perk tags:
+		#   power / speed / boxing  → Turtle  (walls up against brute-force players)
+		#   defensive / chess / timing / tempo → Technician (exploits strategic builds)
+		var aggro_score: int = (
+			tag_counts.get("power", 0) +
+			tag_counts.get("speed", 0) +
+			tag_counts.get("boxing", 0)
+		)
+		var strat_score: int = (
+			tag_counts.get("defensive", 0) +
+			tag_counts.get("chess", 0) +
+			tag_counts.get("timing", 0) +
+			tag_counts.get("tempo", 0)
+		)
+
+		var turtle_opp: Dictionary = {}
+		var tech_opp: Dictionary = {}
+		for c in candidates:
+			match c.get("archetype", ""):
+				"turtle":      turtle_opp = c
+				"technician":  tech_opp   = c
+
+		if aggro_score > strat_score and not turtle_opp.is_empty():
+			chosen = turtle_opp
+		elif strat_score > aggro_score and not tech_opp.is_empty():
+			chosen = tech_opp
+		else:
+			# Tied — pure random
+			candidates.shuffle()
+			chosen = candidates[0]
+
+	fight_order.append(chosen.get("id", ""))
+	_finalize_fight_order()
+
+
+## Appends all remaining path=="both" opponents (e.g. Magnus) and sorts fight_order.
+func _finalize_fight_order() -> void:
 	for opp in all_opponents:
 		var opp_id: String = opp.get("id", "")
 		if opp_id in fight_order:
 			continue
-		var opp_path: String = opp.get("path", "both")
-		if opp_path == "both" or opp_path == chosen_path:
+		if opp.get("path", "both") == "both":
 			fight_order.append(opp_id)
-	# Boss is always last
-	# Sort by fight_position to ensure correct order
 	fight_order.sort_custom(func(a: String, b: String) -> bool:
-		var a_opp := _get_opponent_by_id(a)
-		var b_opp := _get_opponent_by_id(b)
-		return int(a_opp.get("fight_position", 99)) < int(b_opp.get("fight_position", 99))
+		return int(_get_opponent_by_id(a).get("fight_position", 99)) < \
+			   int(_get_opponent_by_id(b).get("fight_position", 99))
 	)
+	fight_order_complete = true
 
 func start_fight() -> void:
 	if current_opponent_index >= fight_order.size():
@@ -328,12 +376,12 @@ func _win_fight() -> void:
 	# Reset per-fight tactic state
 	reset_fight_tactics()
 
-	if current_opponent_index >= fight_order.size():
+	if fight_order_complete and current_opponent_index >= fight_order.size():
+		# fight_order is fully built and we've beaten the last opponent
 		end_run(true)
-	elif current_opponent_index == 2 and chosen_path == "":
-		# After fight 2, show path fork (if path not yet chosen)
-		change_phase(GamePhase.PERK_DRAFT)  # Draft first, then shop, then path fork
 	else:
+		# Includes the SF win (index==2, fight_order not yet complete):
+		# go to draft → shop → select_random_boss() → tournament bracket
 		change_phase(GamePhase.PERK_DRAFT)
 
 func _lose_fight() -> void:
@@ -368,7 +416,7 @@ func end_run(won: bool) -> void:
 			SaveManager.unlock_perk(unlock_id)
 
 	# Record run
-	SaveManager.record_run(run_score, chosen_path)
+	SaveManager.record_run(run_score, "")
 
 	run_ended.emit(won)
 	change_phase(GamePhase.RESULTS)
@@ -632,8 +680,6 @@ func _get_scene_for_phase(phase: GamePhase) -> String:
 			return "res://scenes/perk_draft/perk_draft.tscn"
 		GamePhase.SHOP:
 			return "res://scenes/shop/shop.tscn"
-		GamePhase.PATH_FORK:
-			return "res://scenes/path_fork/path_fork.tscn"
 		GamePhase.RESULTS:
 			return "res://scenes/results/run_results.tscn"
 	return ""
@@ -648,7 +694,6 @@ func _phase_to_string(phase: GamePhase) -> String:
 		GamePhase.BOXING: return "boxing"
 		GamePhase.PERK_DRAFT: return "perk_draft"
 		GamePhase.SHOP: return "shop"
-		GamePhase.PATH_FORK: return "path_fork"
 		GamePhase.RESULTS: return "results"
 	return "unknown"
 
