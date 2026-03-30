@@ -69,7 +69,7 @@ func _create_path_card(opp: Dictionary) -> PanelContainer:
 		vbox.add_child(gimmick_label)
 
 	var stats_label := Label.new()
-	stats_label.text = "HP: %d | Stamina: %d" % [opp.get("hp", 80), opp.get("stamina", 90)]
+	stats_label.text = "HP: %d" % opp.get("hp", 80)
 	stats_label.add_theme_font_size_override("font_size", 14)
 	stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(stats_label)

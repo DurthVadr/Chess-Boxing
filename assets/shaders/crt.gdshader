@@ -1,13 +1,17 @@
 shader_type canvas_item;
 
-// Balatro-inspired CRT: scanlines, curvature, chromatic aberration, vignette, grain
+// Enhanced Balatro-inspired CRT: phosphor glow, scanlines, curvature,
+// chromatic aberration, vignette, grain, subtle bloom, flicker
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
-uniform float scanline_intensity : hint_range(0.0, 1.0) = 0.18;
-uniform float vignette_intensity : hint_range(0.0, 1.0) = 0.35;
-uniform float aberration_amount : hint_range(0.0, 5.0) = 1.2;
-uniform float curvature : hint_range(0.0, 10.0) = 2.5;
-uniform float grain_amount : hint_range(0.0, 0.5) = 0.06;
-uniform float brightness : hint_range(0.8, 1.2) = 1.0;
+uniform float scanline_intensity : hint_range(0.0, 1.0) = 0.12;
+uniform float vignette_intensity : hint_range(0.0, 1.0) = 0.30;
+uniform float aberration_amount : hint_range(0.0, 5.0) = 0.8;
+uniform float curvature : hint_range(0.0, 10.0) = 6.0;
+uniform float grain_amount : hint_range(0.0, 0.5) = 0.04;
+uniform float brightness : hint_range(0.8, 1.3) = 1.02;
+uniform float bloom_amount : hint_range(0.0, 0.5) = 0.08;
+uniform float flicker_amount : hint_range(0.0, 0.05) = 0.008;
+uniform float phosphor_strength : hint_range(0.0, 1.0) = 0.15;
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -24,25 +28,46 @@ vec2 curve_uv(vec2 uv) {
 void fragment() {
 	vec2 uv = curve_uv(SCREEN_UV);
 
-	// Out of bounds — black border; otherwise apply CRT effects
 	bool in_bounds = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
-
 	vec3 col = vec3(0.0);
 
 	if (in_bounds) {
-		// Chromatic aberration — RGB split
+		// Chromatic aberration — RGB split with slight vertical offset
 		float ab = aberration_amount / 1000.0;
-		float r = texture(screen_texture, vec2(uv.x + ab, uv.y)).r;
+		float r = texture(screen_texture, vec2(uv.x + ab, uv.y + ab * 0.3)).r;
 		float g = texture(screen_texture, uv).g;
-		float b = texture(screen_texture, vec2(uv.x - ab, uv.y)).b;
+		float b = texture(screen_texture, vec2(uv.x - ab, uv.y - ab * 0.3)).b;
 		col = vec3(r, g, b);
 
-		// Scanlines
+		// Fake bloom: sample a blurred area and add glow
+		vec3 bloom = vec3(0.0);
+		float bloom_size = 3.0 / 1024.0;
+		bloom += texture(screen_texture, uv + vec2(-bloom_size, 0.0)).rgb;
+		bloom += texture(screen_texture, uv + vec2(bloom_size, 0.0)).rgb;
+		bloom += texture(screen_texture, uv + vec2(0.0, -bloom_size)).rgb;
+		bloom += texture(screen_texture, uv + vec2(0.0, bloom_size)).rgb;
+		bloom *= 0.25;
+		col += max(bloom - 0.5, vec3(0.0)) * bloom_amount * 4.0;
+
+		// Phosphor sub-pixel pattern (RGB stripes)
+		float px = fract(uv.x * 640.0);
+		vec3 phosphor = vec3(
+			smoothstep(0.0, 0.33, px) - smoothstep(0.33, 0.66, px),
+			smoothstep(0.33, 0.66, px) - smoothstep(0.66, 1.0, px),
+			smoothstep(0.66, 1.0, px)
+		);
+		col = mix(col, col * (vec3(1.0) + phosphor * 0.5), phosphor_strength);
+
+		// Scanlines — interlaced look
 		float scanline = sin(uv.y * 720.0 * 3.14159) * 0.5 + 0.5;
-		scanline = pow(scanline, 1.8);
+		scanline = pow(scanline, 1.5);
 		col *= 1.0 - scanline_intensity * (1.0 - scanline);
 
-		// Vignette — dark edges
+		// Secondary fine scanlines (subtle)
+		float fine_scan = sin(uv.y * 1440.0 * 3.14159) * 0.5 + 0.5;
+		col *= 1.0 - scanline_intensity * 0.15 * (1.0 - fine_scan);
+
+		// Vignette — smooth dark edges
 		float vig = uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y);
 		vig = clamp(pow(16.0 * vig, vignette_intensity), 0.0, 1.0);
 		col *= vig;
@@ -50,6 +75,10 @@ void fragment() {
 		// Film grain — animated
 		float grain = (hash(uv * 512.0 + vec2(TIME * 5.0)) - 0.5) * grain_amount;
 		col += grain;
+
+		// Subtle flicker (whole-screen brightness variation)
+		float flicker = 1.0 + flicker_amount * sin(TIME * 8.0) * cos(TIME * 3.7);
+		col *= flicker;
 
 		// Brightness
 		col *= brightness;

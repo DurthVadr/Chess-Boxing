@@ -6,7 +6,24 @@
       "Read(//c//**)",
       "Bash(gdlint:*)",
       "Bash(python3:*)",
-      "Bash(find /c/Proj/Chess-Boxing -name *boxing* -type f)"
+      "Bash(find /c/Proj/Chess-Boxing -name *boxing* -type f)",
+      "Bash(grep -l \"CRTOverlay\\\\|CanvasLayer\" scenes/**/*.tscn)",
+      "Bash(wc -l scenes/**/*.tscn)",
+      "Bash(xargs cat:*)",
+      "Bash(cat scenes/fight/*.tscn)",
+      "Bash(xargs grep:*)",
+      "Bash(find 'Cassette Preview' -name *.wav)",
+      "Bash(grep -r \"class_name\\\\|extends Node\" C:ProjChess-Boxingscriptsautoload --include=*.gd)",
+      "Bash(mv frame_4.png frame_3.png)",
+      "Bash(mv frame_5.png frame_4.png)",
+      "Bash(mv frame_6.png frame_5.png)",
+      "Bash(mv frame_7.png frame_6.png)",
+      "Bash(mv frame_8.png frame_7.png)",
+      "Bash(rm frame_2.png)",
+      "Bash(mv frame_3.png frame_2.png)",
+      "Bash(rm -f frame_7.png.import)",
+      "Bash(rm frame_4.png)",
+      "Bash(rm -f frame_6.png.import)"
     ]
   }
 }

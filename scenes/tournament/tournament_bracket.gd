@@ -116,7 +116,10 @@ func _build_bracket() -> void:
 
 	# ── Collect player + opponent data ──
 	var player_name := (GameManager.player_fighter.get("name", "THE ROOKIE") as String).to_upper()
-	var cur_opp: Dictionary = GameManager.current_opponent
+	# Look up opponent from fight_order (current_opponent is stale until start_fight)
+	var cur_opp: Dictionary = {}
+	if opp_idx < GameManager.fight_order.size():
+		cur_opp = GameManager._get_opponent_by_id(GameManager.fight_order[opp_idx])
 	var cur_name := (cur_opp.get("name", "???") as String).to_upper()
 	var cur_tex: Texture2D = _load_portrait(cur_opp.get("sprite_base", "") as String)
 
@@ -366,4 +369,5 @@ func _pulse_style(style: StyleBoxFlat, c_hi: Color, c_lo: Color) -> void:
 
 
 func _on_proceed() -> void:
+	AudioManager.play_confirm()
 	GameManager.start_fight()

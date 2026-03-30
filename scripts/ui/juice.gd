@@ -8,6 +8,8 @@ extends RefCounted
 static func screen_shake(node: CanvasItem, intensity: float = 10.0, duration: float = 0.2) -> void:
 	if not is_instance_valid(node):
 		return
+	if not SaveManager.settings.get("screen_shake", true):
+		return
 	var tween := node.create_tween()
 	var steps := int(duration / 0.03)
 	for i in steps:
@@ -175,9 +177,120 @@ static func set_bonus_activation(parent: Control, bonus_name: String) -> void:
 	tween.tween_property(label, "modulate:a", 0.0, 0.3)
 	tween.tween_callback(label.queue_free)
 
+## Dodge slide — character sways sideways and snaps back smoothly
+static func dodge_slide(node: CanvasItem, direction: float = 1.0, distance: float = 30.0, duration: float = 0.35) -> void:
+	if not is_instance_valid(node):
+		return
+	var prop := "pivot_offset" if node is Control else "position"
+	var base: Vector2 = node.get(prop)
+	var offset := base + Vector2(distance * direction, -8.0)
+	var tween := node.create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_BACK)
+	tween.tween_property(node, prop, offset, duration * 0.3)
+	tween.tween_property(node, prop, base, duration * 0.7).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+
+## Hit lunge — attacker slides toward target then snaps back
+static func hit_lunge(node: CanvasItem, direction: float = 1.0, distance: float = 20.0, duration: float = 0.2) -> void:
+	if not is_instance_valid(node):
+		return
+	var prop := "pivot_offset" if node is Control else "position"
+	var base: Vector2 = node.get(prop)
+	var lunge := base + Vector2(distance * direction, 0.0)
+	var tween := node.create_tween()
+	tween.tween_property(node, prop, lunge, duration * 0.35).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(node, prop, base, duration * 0.65).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+
+## Impact burst — expanding ring at hit position, fades out
+static func impact_burst(parent: Control, pos: Vector2, color: Color = Color(1.0, 0.85, 0.3, 0.9), radius: float = 40.0) -> void:
+	if not is_instance_valid(parent):
+		return
+	var ring := _ImpactRing.new()
+	ring.burst_color = color
+	ring.max_radius = radius
+	ring.z_index = 150
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Pre-set size so position calc works before _ready
+	var ring_size := Vector2(radius * 2 + 10, radius * 2 + 10)
+	ring.custom_minimum_size = ring_size
+	ring.size = ring_size
+	ring.position = pos - ring_size / 2.0
+	parent.add_child(ring)
+
+## Full-screen flash overlay — brief white/color flash for big moments
+static func screen_flash(parent: Control, color: Color = Color(1, 1, 1, 0.3), duration: float = 0.15) -> void:
+	if not is_instance_valid(parent):
+		return
+	var overlay := ColorRect.new()
+	overlay.color = color
+	overlay.anchors_preset = Control.PRESET_FULL_RECT
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 300
+	parent.add_child(overlay)
+	var tween := overlay.create_tween()
+	tween.tween_property(overlay, "color:a", 0.0, duration).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(overlay.queue_free)
+
+## HP bar punch — makes an HP bar jump when taking damage
+static func bar_punch(bar: ProgressBar, duration: float = 0.25) -> void:
+	if not is_instance_valid(bar):
+		return
+	bar.pivot_offset = bar.size / 2.0
+	var tween := bar.create_tween()
+	tween.tween_property(bar, "scale", Vector2(1.08, 1.15), duration * 0.25).set_ease(Tween.EASE_OUT)
+	tween.tween_property(bar, "scale", Vector2.ONE, duration * 0.75).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+
+## Ghostly afterimage — spawns a fading duplicate at the node's position
+static func afterimage(parent: Control, source: CanvasItem, color: Color = Color(0.4, 0.6, 1.0, 0.5), count: int = 3, spacing: float = 0.06) -> void:
+	if not is_instance_valid(parent) or not is_instance_valid(source):
+		return
+	for i in count:
+		var ghost := ColorRect.new()
+		ghost.size = source.size if source is Control else Vector2(60, 80)
+		ghost.color = Color(color.r, color.g, color.b, color.a * (1.0 - float(i) * 0.3))
+		ghost.position = source.global_position + Vector2(float(i) * 8.0, 0)
+		ghost.z_index = 90
+		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		parent.add_child(ghost)
+		var tween := ghost.create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.tween_property(ghost, "modulate:a", 0.0, 0.4).set_delay(spacing * i)
+		tween.tween_callback(ghost.queue_free)
+
 ## KO slow-motion effect
 static func ko_slowmo(tree: SceneTree, duration: float = 1.0) -> void:
 	Engine.time_scale = 0.3
 	tree.create_timer(duration * 0.3, true, false, true).timeout.connect(
 		func(): Engine.time_scale = 1.0
 	)
+
+## ─── Internal helper: expanding impact ring drawn via _draw ───
+class _ImpactRing extends Control:
+	var burst_color: Color = Color(1.0, 0.85, 0.3, 0.9)
+	var max_radius: float = 40.0
+	var _t: float = 0.0
+	var _duration: float = 0.35
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if _t >= _duration:
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var progress := _t / _duration
+		var current_radius := max_radius * progress
+		var alpha := (1.0 - progress) * burst_color.a
+		var width := lerpf(4.0, 1.0, progress)
+		var c := Color(burst_color.r, burst_color.g, burst_color.b, alpha)
+		var center := size / 2.0
+		draw_arc(center, current_radius, 0, TAU, 32, c, width, true)
+		# Inner glow ring
+		if progress < 0.6:
+			var inner_r := current_radius * 0.6
+			var inner_a := alpha * 0.5
+			draw_arc(center, inner_r, 0, TAU, 24, Color(c.r, c.g, c.b, inner_a), width * 0.5, true)

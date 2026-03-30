@@ -205,20 +205,6 @@ theme_override_colors/font_color = Color(0.88, 0.85, 0.78, 1)
 text = "100"
 horizontal_alignment = 2
 
-[node name="StaminaKey" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(0.55, 0.55, 0.60, 0.80)
-text = "MAX STM"
-
-[node name="StaminaStatLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(0.88, 0.85, 0.78, 1)
-text = "100"
-horizontal_alignment = 2
-
 [node name="HSep2" type="HSeparator" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
 layout_mode = 2
 modulate = Color(0.4, 0.35, 0.55, 0.5)

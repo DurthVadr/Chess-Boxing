@@ -11,10 +11,6 @@ static func get_bonus_damage(chess_bonus: float) -> int:
 static func get_bonus_defense(chess_bonus: float) -> int:
 	return int(chess_bonus * 3.0)  # 0 to 3 bonus defense
 
-## Calculate stamina recovery bonus
-static func get_stamina_recovery(chess_bonus: float) -> int:
-	return int(chess_bonus * 10.0)  # 0 to 10 stamina recovery
-
 ## Get descriptive text for the bonus level
 static func get_bonus_text(chess_bonus: float) -> String:
 	if chess_bonus >= 0.8:

@@ -9,7 +9,7 @@ signal run_ended(won: bool)
 signal set_bonus_activated(bonus: Dictionary)
 
 # --- Enums ---
-enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, PERK_DRAFT, SHOP, RESULTS }
+enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, MOVE_UPGRADE, PERK_DRAFT, SHOP, RESULTS }
 enum FightResult { IN_PROGRESS, PLAYER_WIN, PLAYER_LOSE }
 
 # --- Run State ---
@@ -24,15 +24,16 @@ var max_rounds_per_fight: int = 4
 var player_fighter: Dictionary = {}
 var player_hp: int = 100
 var player_max_hp: int = 100
-var player_stamina: int = 100
-var player_max_stamina: int = 100
-
 # --- Opponent State ---
 var current_opponent: Dictionary = {}
 var opponent_hp: int = 0
 var opponent_max_hp: int = 0
-var opponent_stamina: int = 0
-var opponent_max_stamina: int = 0
+
+# --- Move Progression ---
+var unlocked_moves: Array = []       # Array of BoxingAction.ActionType
+var equipped_moves: Array = []       # Array of BoxingAction.ActionType (max 2)
+var move_slots: int = 1              # How many distinct moves player can equip
+var jab_upgraded: bool = false       # True if player chose to upgrade jab
 
 # --- Heat System (replaces chess_bonus) ---
 var heat: float = 1.0            # Current heat multiplier (1.0–5.0)
@@ -128,8 +129,12 @@ func start_new_run(fighter: Dictionary) -> void:
 	player_fighter = fighter
 	player_max_hp = int(fighter.get("hp", 100))
 	player_hp = player_max_hp
-	player_max_stamina = int(fighter.get("stamina", 100))
-	player_stamina = player_max_stamina
+
+	# Move progression — start with JAB only, 1 slot
+	unlocked_moves = [BoxingAction.ActionType.JAB]
+	equipped_moves = [BoxingAction.ActionType.JAB]
+	move_slots = 1
+	jab_upgraded = false
 
 	active_perks.clear()
 	tag_counts.clear()
@@ -270,26 +275,17 @@ func start_fight() -> void:
 		return
 	opponent_max_hp = int(current_opponent.get("hp", 80))
 	opponent_hp = opponent_max_hp
-	opponent_max_stamina = int(current_opponent.get("stamina", 90))
-	opponent_stamina = opponent_max_stamina
 	current_round_in_fight = 0
 	previous_heat = 0.0
 	current_fight_puzzle_solved = false
 
-	# Restore player stamina; HP gets decreasing heal per fight
-	player_stamina = player_max_stamina
+	# HP gets decreasing heal per fight
 	var heal_pcts := [0.4, 0.3, 0.3, 0.2, 0.0]
 	var heal_pct: float = heal_pcts[mini(current_opponent_index, heal_pcts.size() - 1)]
 	player_hp = mini(player_hp + int(player_max_hp * heal_pct), player_max_hp)
 
 	# Apply sacrifice set bonus (start at reduced HP but with heat bonus)
 	_apply_fight_start_set_bonuses()
-
-	# Apply max stamina perk
-	if has_perk("max_stamina_bonus"):
-		var bonus := int(get_perk_raw_value("max_stamina_bonus"))
-		player_max_stamina += bonus
-		player_stamina = player_max_stamina
 
 	# Reset boss perks for new fight
 	opponent_perks.clear()
@@ -380,9 +376,9 @@ func _win_fight() -> void:
 		# fight_order is fully built and we've beaten the last opponent
 		end_run(true)
 	else:
-		# Includes the SF win (index==2, fight_order not yet complete):
-		# go to draft → shop → select_random_boss() → tournament bracket
-		change_phase(GamePhase.PERK_DRAFT)
+		# Show move upgrade screen (unlocks new moves after fights 1 and 2)
+		# Then continues to perk draft → shop → tournament
+		change_phase(GamePhase.MOVE_UPGRADE)
 
 func _lose_fight() -> void:
 	fight_ended.emit(false)
@@ -579,15 +575,7 @@ func add_perk(perk: Dictionary) -> void:
 	_apply_immediate_set_bonuses()
 
 func _apply_immediate_set_bonuses() -> void:
-	for bonus in active_set_bonuses:
-		var effect: String = bonus.get("effect", "")
-		if effect == "max_stamina_set_bonus":
-			# Only apply once — check if already applied
-			if not bonus.get("_applied", false):
-				var stam: int = int(bonus.get("values", {}).get("stamina", 10))
-				player_max_stamina += stam
-				player_stamina = mini(player_stamina + stam, player_max_stamina)
-				bonus["_applied"] = true
+	pass  # Reserved for future set bonus effects
 
 func get_perk_count_by_type(type: String) -> int:
 	var count := 0
@@ -601,6 +589,51 @@ func get_tag_counts() -> Dictionary:
 
 func get_active_set_bonuses_list() -> Array:
 	return active_set_bonuses
+
+# =============================================================================
+# Move Progression
+# =============================================================================
+
+## Returns what upgrade options are available after the current fight win.
+## Fight 1 win (index was 0 → now 1): choose "Upgrade Jab" or "Unlock Cross"
+## Fight 2 win (index was 1 → now 2): auto-unlock Uppercut, choose 2 of 3 to equip
+## Fight 3+: no new unlocks
+func get_move_upgrade_options() -> Dictionary:
+	if current_opponent_index == 1:
+		# After first fight win
+		return {
+			"type": "choose_unlock",
+			"options": ["upgrade_jab", "unlock_cross"],
+		}
+	elif current_opponent_index == 2:
+		# After second fight win — unlock uppercut
+		return {
+			"type": "equip_select",
+			"new_unlock": BoxingAction.ActionType.UPPERCUT,
+		}
+	return {"type": "none"}
+
+func apply_move_choice(choice: String) -> void:
+	if choice == "upgrade_jab":
+		jab_upgraded = true
+		move_slots = 2
+		equipped_moves = [BoxingAction.ActionType.JAB, BoxingAction.ActionType.JAB]
+	elif choice == "unlock_cross":
+		if BoxingAction.ActionType.CROSS not in unlocked_moves:
+			unlocked_moves.append(BoxingAction.ActionType.CROSS)
+		move_slots = 2
+		equipped_moves = [BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS]
+
+func unlock_uppercut() -> void:
+	if BoxingAction.ActionType.UPPERCUT not in unlocked_moves:
+		unlocked_moves.append(BoxingAction.ActionType.UPPERCUT)
+
+func set_equipped_moves(moves: Array) -> void:
+	equipped_moves = moves.duplicate()
+
+## Get the effective damage for JAB (considering upgrade)
+func get_jab_damage_bonus() -> int:
+	return 3 if jab_upgraded else 0
 
 # =============================================================================
 # Puzzle Selection
@@ -676,6 +709,8 @@ func _get_scene_for_phase(phase: GamePhase) -> String:
 			return "res://scenes/chess_phase/chess_phase.tscn"
 		GamePhase.BOXING:
 			return "res://scenes/boxing_phase/boxing_phase.tscn"
+		GamePhase.MOVE_UPGRADE:
+			return "res://scenes/move_upgrade/move_upgrade.tscn"
 		GamePhase.PERK_DRAFT:
 			return "res://scenes/perk_draft/perk_draft.tscn"
 		GamePhase.SHOP:
@@ -692,6 +727,7 @@ func _phase_to_string(phase: GamePhase) -> String:
 		GamePhase.OPPONENT_REVEAL: return "opponent_reveal"
 		GamePhase.CHESS: return "chess"
 		GamePhase.BOXING: return "boxing"
+		GamePhase.MOVE_UPGRADE: return "move_upgrade"
 		GamePhase.PERK_DRAFT: return "perk_draft"
 		GamePhase.SHOP: return "shop"
 		GamePhase.RESULTS: return "results"
@@ -772,9 +808,7 @@ func _apply_stat_upgrade(effect: String, values: Dictionary) -> void:
 			player_max_hp += hp_add
 			player_hp = mini(player_hp + hp_add, player_max_hp)
 		"shop_max_stamina":
-			var stam_add := int(values.get("stamina", 10))
-			player_max_stamina += stam_add
-			player_stamina = mini(player_stamina + stam_add, player_max_stamina)
+			pass  # Stamina removed
 		"shop_base_damage":
 			shop_base_damage_bonus += int(values.get("damage", 1))
 

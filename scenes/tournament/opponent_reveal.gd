@@ -29,7 +29,7 @@ func _ready() -> void:
 	# ── Player info ──────────────────────────────────────────────────────────
 	player_name_label.text = player.get("name", "The Rookie")
 	player_class_label.text = "CHALLENGER"
-	player_stats_label.text = "HP: %d  |  STA: %d" % [GameManager.player_max_hp, GameManager.player_max_stamina]
+	player_stats_label.text = "HP: %d" % GameManager.player_max_hp
 
 	var player_sprite: String = player.get("sprite_base", "")
 	if player_sprite != "":
@@ -40,7 +40,7 @@ func _ready() -> void:
 	# ── Opponent info ────────────────────────────────────────────────────────
 	opponent_name_label.text = opp.get("name", "???")
 	archetype_label.text = opp.get("archetype", "unknown").to_upper()
-	stats_label.text = "HP: %d  |  STA: %d" % [opp.get("hp", 80), opp.get("stamina", 90)]
+	stats_label.text = "HP: %d" % opp.get("hp", 80)
 	flavor_label.text = opp.get("flavor_text", "")
 
 	var gimmick = opp.get("gimmick", null)
@@ -66,6 +66,7 @@ func _animate_reveal() -> void:
 	player_side.position.x -= 500
 	var tw_p := create_tween()
 	tw_p.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw_p.tween_callback(func(): AudioManager.play_sfx_varied(AudioManager.sfx_whoosh, -8.0))
 	tw_p.tween_property(player_side, "position:x", player_offset, 0.6)
 	tw_p.parallel().tween_property(player_side, "modulate:a", 1.0, 0.3)
 
@@ -75,8 +76,9 @@ func _animate_reveal() -> void:
 	opponent_side.position.x += 500
 	var tw_o := create_tween()
 	tw_o.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tw_o.tween_property(opponent_side, "position:x", opp_offset, 0.6).set_delay(0.15)
-	tw_o.parallel().tween_property(opponent_side, "modulate:a", 1.0, 0.3).set_delay(0.15)
+	tw_o.tween_callback(func(): AudioManager.play_sfx_varied(AudioManager.sfx_whoosh, -8.0)).set_delay(0.15)
+	tw_o.tween_property(opponent_side, "position:x", opp_offset, 0.6)
+	tw_o.parallel().tween_property(opponent_side, "modulate:a", 1.0, 0.3)
 
 	# ── VS slams in with scale pop ───────────────────────────────────────────
 	vs_label.modulate.a = 0.0
@@ -87,16 +89,22 @@ func _animate_reveal() -> void:
 	tw_vs.tween_interval(0.55)
 	tw_vs.tween_property(vs_label, "modulate:a", 1.0, 0.15)
 	tw_vs.parallel().tween_property(vs_label, "scale", Vector2.ONE, 0.35)
-	tw_vs.tween_callback(func(): Juice.screen_shake(self, 12.0, 0.2))
+	tw_vs.tween_callback(func():
+		Juice.screen_shake(self, 14.0, 0.25)
+		Juice.screen_flash(self, Color(1, 1, 1, 0.35), 0.2)
+		AudioManager.play_sfx(AudioManager.sfx_sub_drop, -2.0)
+	)
 	tw_vs.tween_callback(_on_reveal_complete).set_delay(0.6)
 
 
 func _on_reveal_complete() -> void:
 	reveal_done = true
 	fight_btn.visible = true
+	AudioManager.play_reveal()
 	Juice.scale_bounce(fight_btn, 1.15, 0.3)
 
 
 func _on_fight() -> void:
+	AudioManager.play_fight_start()
 	GameManager.current_round_in_fight = 0
 	GameManager.change_phase(GameManager.GamePhase.CHESS)

@@ -9,18 +9,14 @@ extends Control
 
 @onready var player_hp_bar: ProgressBar = %PlayerHPBar
 @onready var player_hp_label: Label = %PlayerHPLabel
-@onready var player_stamina_bar: ProgressBar = %PlayerStaminaBar
-@onready var player_stamina_label: Label = %PlayerStaminaLabel
 @onready var player_name_label: Label = %PlayerNameLabel
 @onready var opponent_hp_bar: ProgressBar = %OpponentHPBar
 @onready var opponent_hp_label: Label = %OpponentHPLabel
-@onready var opponent_stamina_bar: ProgressBar = %OpponentStaminaBar
-@onready var opponent_stamina_label: Label = %OpponentStaminaLabel
 @onready var opponent_name_label: Label = %OpponentNameLabel
 @onready var combat_log: RichTextLabel = %CombatLog
 @onready var action_container: GridContainer = %ActionContainer
 @onready var bonus_label: Label = %BonusLabel
-@onready var player_sprite: TextureRect = %PlayerSprite
+@onready var player_sprite: AnimatedPortrait = %PlayerSprite
 @onready var opponent_sprite: TextureRect = %OpponentSprite
 @onready var combo_label: Label = %ComboLabel
 @onready var action_phase_label: Label = %ActionPhaseLabel
@@ -46,15 +42,10 @@ var _executing: bool = false
 # Tactic card state for this turn
 var tactic_played_this_turn: bool = false
 
-# Offense (warm reds/oranges) · Defense (cool blues/greys)
 const ACTION_COLORS := {
 	"Jab":      Color(0.52, 0.22, 0.18),
 	"Cross":    Color(0.58, 0.26, 0.16),
-	"Hook":     Color(0.60, 0.32, 0.14),
 	"Uppercut": Color(0.62, 0.26, 0.14),
-	"Block":    Color(0.20, 0.30, 0.54),
-	"Dodge":    Color(0.18, 0.36, 0.52),
-	"Clinch":   Color(0.26, 0.30, 0.40),
 }
 
 const GOLD := Color(0.92, 0.80, 0.28)
@@ -82,13 +73,20 @@ func _ready() -> void:
 		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
 		opponent_sprite.texture = load(tex_path)
 
+	# Load player idle animation from sprite sheet frames
+	var player_sprite_base: String = GameManager.player_fighter.get("sprite_base", "rookie")
+	var anim_folder := "res://assets/sprites/fighters/%s_idle" % player_sprite_base
+	player_sprite.load_animation(anim_folder)
+
 	_update_ui()
 	_build_action_buttons()
 	_build_tactic_hand()
 	_show_heat()
 	_prepare_opponent_actions()
 
+	AudioManager.play_round_bell()
 	Juice.fade_in(self, 0.3)
+	Juice.screen_shake(self, 6.0, 0.2)
 
 func _show_heat() -> void:
 	var current_heat := GameManager.get_heat()
@@ -100,11 +98,21 @@ func _build_action_buttons() -> void:
 		child.queue_free()
 
 	var all_actions := BoxingAction.create_all()
-	for action_type in all_actions:
-		var action: BoxingAction = all_actions[action_type]
+	var equipped := GameManager.equipped_moves
+
+	# If only 1 slot, auto-fill both with that move
+	if GameManager.move_slots == 1:
+		_auto_select_single_move(equipped[0])
+		return
+
+	for move_type in equipped:
+		var action: BoxingAction = all_actions[move_type]
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(140, 50)
-		btn.text = action.name
+		btn.custom_minimum_size = Vector2(160, 55)
+		var dmg := action.damage
+		if move_type == BoxingAction.ActionType.JAB:
+			dmg += GameManager.get_jab_damage_bonus()
+		btn.text = "%s (DMG: %d)" % [action.name, dmg]
 
 		var style := StyleBoxFlat.new()
 		style.bg_color = ACTION_COLORS.get(action.name, Color(0.3, 0.3, 0.3))
@@ -119,10 +127,22 @@ func _build_action_buttons() -> void:
 		btn.add_theme_stylebox_override("hover", hover)
 
 		btn.add_theme_font_size_override("font_size", 16)
-		btn.tooltip_text = action.description + "\nDMG: %d | Cost: %d" % [action.damage, action.stamina_cost]
+		btn.tooltip_text = action.description
 
-		btn.pressed.connect(_on_action_selected.bind(action_type))
+		btn.pressed.connect(_on_action_selected.bind(move_type))
 		action_container.add_child(btn)
+
+## When player only has 1 move slot, auto-select both actions
+func _auto_select_single_move(move_type: BoxingAction.ActionType) -> void:
+	selected_action_1 = move_type
+	action_selection_phase = 0
+	action_phase_label.text = "AUTO: Double %s" % BoxingAction.create_all()[move_type].name
+	_set_actions_disabled(true)
+	# Small delay then auto-execute
+	await get_tree().create_timer(0.3).timeout
+	_on_action_selected(move_type)
+	await get_tree().create_timer(0.2).timeout
+	_on_action_selected(move_type)
 
 func _build_tactic_hand() -> void:
 	var tactic_container: HBoxContainer = get_node_or_null("%TacticHandContainer")
@@ -214,6 +234,7 @@ func _on_play_tactic(index: int) -> void:
 	var card := GameManager.play_tactic_card(index)
 	if card.is_empty():
 		return
+	AudioManager.play_card_play()
 
 	tactic_played_this_turn = true
 
@@ -226,8 +247,8 @@ func _on_play_tactic(index: int) -> void:
 
 	if card.get("effect", "") == "pin":
 		if opponent_next_actions.size() >= 2:
-			opponent_next_actions[1] = BoxingAction.ActionType.BLOCK
-			_add_to_log("[color=gold]Pin: Opponent's second action forced to BLOCK![/color]")
+			opponent_next_actions[1] = BoxingAction.ActionType.JAB
+			_add_to_log("[color=gold]Pin: Opponent's second action forced to JAB![/color]")
 
 	_build_tactic_hand()
 	Juice.scale_bounce(action_container, 1.02, 0.15)
@@ -235,7 +256,7 @@ func _on_play_tactic(index: int) -> void:
 func _prepare_opponent_actions() -> void:
 	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
 	var player_hp_pct := float(GameManager.player_hp) / float(GameManager.player_max_hp)
-	opponent_next_actions = opponent_ai.choose_actions(opp_hp_pct, GameManager.opponent_stamina, player_hp_pct)
+	opponent_next_actions = opponent_ai.choose_actions(opp_hp_pct, 100, player_hp_pct)
 
 	var telegraph_text := opponent_ai.get_telegraph_for_actions(opponent_next_actions)
 	_add_to_log("[color=#e89926]> %s[/color]" % telegraph_text)
@@ -252,11 +273,9 @@ func _prepare_opponent_actions() -> void:
 func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 	if not is_player_turn or round_over or _executing:
 		return
+	AudioManager.play_button_click()
 
-	if GameManager.has_perk("all_in"):
-		if action_type == BoxingAction.ActionType.BLOCK or action_type == BoxingAction.ActionType.DODGE:
-			_add_to_log("[color=red]All In: You can't block or dodge![/color]")
-			return
+	# All In perk no longer restricts actions (no block/dodge in new system)
 
 	if action_selection_phase == 0:
 		selected_action_1 = action_type
@@ -284,6 +303,8 @@ func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 		combo_label.text = combo_name
 		combo_label.add_theme_color_override("font_color", GOLD)
 		Juice.punch_text(combo_label)
+		Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.15), 0.2)
+		Juice.screen_shake(self, 3.0, 0.1)
 
 	# Resolve tactic modifiers
 	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
@@ -364,15 +385,9 @@ func _execute_turn(
 
 	# ---------- STEP 1: Player Action 1 (Offensive QTE) ----------
 	var p1_act: BoxingAction = all_actions[player_actions[0]]
-	var qte1 := "miss"
-	if ComboSystem.is_attack(player_actions[0]):
-		_add_to_log("[color=#6eaadc]You throw a %s![/color]" % p1_act.name)
-		qte1 = await _run_offensive_qte(player_actions[0])
-	elif player_actions[0] == BoxingAction.ActionType.CLINCH:
-		_add_to_log("[color=#6eaadc]You clinch![/color]")
-		qte1 = await _run_clinch_qte()
-	else:
-		_add_to_log("[color=#6eaadc]You %s![/color]" % p1_act.name.to_lower())
+	AudioManager.play_whoosh()
+	_add_to_log("[color=#6eaadc]You throw a %s![/color]" % p1_act.name)
+	var qte1: String = await _run_offensive_qte(player_actions[0])
 
 	var r1 := combat_mgr.resolve_single_action(
 		player_actions[0], opp_actions[0], qte1, true, player_stats, opponent_stats
@@ -388,16 +403,9 @@ func _execute_turn(
 	await get_tree().create_timer(0.4).timeout
 
 	# ---------- STEP 2: Enemy Action 1 (Defensive QTE) ----------
-	var o1_act: BoxingAction = all_actions[opp_actions[0]]
-	var qte2 := "failed_defense"
-	if ComboSystem.is_attack(opp_actions[0]):
-		_add_to_log("[color=#d96050]Opponent throws a %s![/color]" % o1_act.name)
-		qte2 = await _run_defensive_qte()
-	elif opp_actions[0] == BoxingAction.ActionType.CLINCH:
-		_add_to_log("[color=#d96050]Opponent clinches![/color]")
-		qte2 = await _run_clinch_qte()
-	else:
-		_add_to_log("[color=#d96050]Opponent uses %s![/color]" % o1_act.name.to_lower())
+	AudioManager.play_whoosh()
+	_add_to_log("[color=#d96050]Opponent attacks![/color]")
+	var qte2: String = await _run_defensive_qte()
 
 	var r2 := combat_mgr.resolve_single_action(
 		opp_actions[0], player_actions[0], qte2, false, player_stats, opponent_stats
@@ -407,11 +415,6 @@ func _execute_turn(
 	for msg in r2.messages:
 		_add_to_log(msg)
 
-	var reflect1: int = r2.get("reflect_damage", 0)
-	if reflect1 > 0:
-		GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - reflect1)
-		_update_ui()
-
 	if _check_ko():
 		return
 
@@ -419,15 +422,9 @@ func _execute_turn(
 
 	# ---------- STEP 3: Player Action 2 (Offensive QTE) ----------
 	var p2_act: BoxingAction = all_actions[player_actions[1]]
-	var qte3 := "miss"
-	if ComboSystem.is_attack(player_actions[1]):
-		_add_to_log("[color=#6eaadc]You throw a %s![/color]" % p2_act.name)
-		qte3 = await _run_offensive_qte(player_actions[1])
-	elif player_actions[1] == BoxingAction.ActionType.CLINCH:
-		_add_to_log("[color=#6eaadc]You clinch![/color]")
-		qte3 = await _run_clinch_qte()
-	else:
-		_add_to_log("[color=#6eaadc]You %s![/color]" % p2_act.name.to_lower())
+	AudioManager.play_whoosh()
+	_add_to_log("[color=#6eaadc]You throw a %s![/color]" % p2_act.name)
+	var qte3: String = await _run_offensive_qte(player_actions[1])
 
 	var r3 := combat_mgr.resolve_single_action(
 		player_actions[1], opp_actions[1], qte3, true, player_stats, opponent_stats
@@ -447,16 +444,9 @@ func _execute_turn(
 	await get_tree().create_timer(0.4).timeout
 
 	# ---------- STEP 4: Enemy Action 2 (Defensive QTE) ----------
-	var o2_act: BoxingAction = all_actions[opp_actions[1]]
-	var qte4 := "failed_defense"
-	if ComboSystem.is_attack(opp_actions[1]):
-		_add_to_log("[color=#d96050]Opponent throws a %s![/color]" % o2_act.name)
-		qte4 = await _run_defensive_qte()
-	elif opp_actions[1] == BoxingAction.ActionType.CLINCH:
-		_add_to_log("[color=#d96050]Opponent clinches![/color]")
-		qte4 = await _run_clinch_qte()
-	else:
-		_add_to_log("[color=#d96050]Opponent uses %s![/color]" % o2_act.name.to_lower())
+	AudioManager.play_whoosh()
+	_add_to_log("[color=#d96050]Opponent attacks![/color]")
+	var qte4: String = await _run_defensive_qte()
 
 	var r4 := combat_mgr.resolve_single_action(
 		opp_actions[1], player_actions[1], qte4, false, player_stats, opponent_stats
@@ -469,11 +459,6 @@ func _execute_turn(
 	_apply_step_damage(r4, false, qte4)
 	for msg in r4.messages:
 		_add_to_log(msg)
-
-	var reflect2: int = r4.get("reflect_damage", 0)
-	if reflect2 > 0:
-		GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - reflect2)
-		_update_ui()
 
 	# --- Zwischenzug: free JAB between opponent's actions ---
 	if tactic_mods.free_interrupt_action != "":
@@ -541,36 +526,60 @@ func _execute_turn(
 # QTE Runners — one per mini-game type
 # =============================================================================
 
-## Offensive QTE: pick Pendulum (Jab/Cross) or Convergence (Hook/Uppercut).
+## Offensive QTE: JAB → Pendulum (slow), CROSS → Cross QTE, UPPERCUT → Convergence.
 func _run_offensive_qte(action: BoxingAction.ActionType) -> String:
 	var result: String
-	if action == BoxingAction.ActionType.JAB or action == BoxingAction.ActionType.CROSS:
-		result = await _run_pendulum_qte()
-	else:
-		result = await _run_convergence_qte()
+	match action:
+		BoxingAction.ActionType.JAB:
+			result = await _run_pendulum_qte()
+		BoxingAction.ActionType.CROSS:
+			result = await _run_cross_qte()
+		BoxingAction.ActionType.UPPERCUT:
+			result = await _run_convergence_qte()
+		_:
+			result = await _run_pendulum_qte()
 	return result
 
 ## Defensive QTE: Knight's Leap directional sequence.
 func _run_defensive_qte() -> String:
 	return await _run_knights_leap_qte()
 
-## Pendulum (Jab / Cross) — horizontal timing bar.
+## Pendulum (Jab) — slow horizontal timing bar, easy to hit.
 func _run_pendulum_qte() -> String:
 	var qte := QTEPendulum.new()
-	qte.prompt_text = "ATTACK!"
+	qte.prompt_text = "JAB!"
 	qte.prompt_color = Color(0.88, 0.36, 0.32)
+	qte.cursor_speed = 420.0  # Slower = easier for jab
 	qte.position = _get_center_stage_pos(QTEPendulum.BAR_WIDTH + 40, 60)
 	qte.z_index = 150
 	add_child(qte)
+	AudioManager.play_qte_appear()
 	var result: String = await qte.run()
+	AudioManager.play_qte_result(result)
 	_spawn_qte_result_popup(result, qte.global_position + Vector2(QTEPendulum.BAR_WIDTH * 0.5, -10))
 	qte.queue_free()
 	return result
 
-## Convergence (Hook / Uppercut) — shrinking circles over enemy portrait.
+## Cross QTE — two perpendicular timing bars, gradual curve.
+func _run_cross_qte() -> String:
+	var qte := QTECross.new()
+	qte.prompt_text = "CROSS!"
+	qte.prompt_color = Color(0.88, 0.36, 0.32)
+	var cross_size := QTECross.ARM_LENGTH * 2 + 60
+	qte.position = _get_center_stage_pos(cross_size, cross_size + 40)
+	qte.z_index = 150
+	add_child(qte)
+	AudioManager.play_qte_appear()
+	var result: String = await qte.run()
+	AudioManager.play_qte_result(result)
+	_spawn_qte_result_popup(result, qte.global_position + Vector2(cross_size * 0.5, -10))
+	qte.queue_free()
+	return result
+
+## Convergence (Uppercut) — shrinking circles over enemy portrait.
 func _run_convergence_qte() -> String:
 	var qte := QTEConvergence.new()
-	qte.prompt_text = "STRIKE!"
+	qte.prompt_text = "UPPERCUT!"
 	qte.prompt_color = Color(0.88, 0.36, 0.32)
 	# Center over opponent sprite
 	var opp_center := opponent_sprite.global_position + opponent_sprite.size * 0.5
@@ -578,7 +587,9 @@ func _run_convergence_qte() -> String:
 	qte.position = opp_center - qte_half
 	qte.z_index = 150
 	add_child(qte)
+	AudioManager.play_qte_appear()
 	var result: String = await qte.run()
+	AudioManager.play_qte_result(result)
 	_spawn_qte_result_popup(result, opp_center + Vector2(0, -QTEConvergence.START_RADIUS - 20))
 	qte.queue_free()
 	return result
@@ -588,22 +599,13 @@ func _run_knights_leap_qte() -> String:
 	var qte := QTEKnightsLeap.new()
 	qte.prompt_text = "DEFEND!"
 	qte.prompt_color = Color(0.32, 0.52, 0.82)
-	qte.position = _get_center_stage_pos(300, 90)
+	qte.position = _get_center_stage_pos(320, 110)
 	qte.z_index = 150
 	add_child(qte)
+	AudioManager.play_qte_appear()
 	var result: String = await qte.run()
-	_spawn_qte_result_popup(result, qte.global_position + Vector2(150, -10))
-	qte.queue_free()
-	return result
-
-## Clinch QTE — tug-of-war meter.
-func _run_clinch_qte() -> String:
-	var qte := QTEClinch.new()
-	qte.position = _get_center_stage_pos(QTEClinch.METER_WIDTH + 80, QTEClinch.METER_HEIGHT + 70)
-	qte.z_index = 150
-	add_child(qte)
-	var result: String = await qte.run()
-	_spawn_qte_result_popup(result, qte.global_position + Vector2((QTEClinch.METER_WIDTH + 80) * 0.5, -10))
+	AudioManager.play_qte_result(result)
+	_spawn_qte_result_popup(result, qte.global_position + Vector2(160, -10))
 	qte.queue_free()
 	return result
 
@@ -626,8 +628,12 @@ func _spawn_qte_result_popup(result: String, pos: Vector2) -> void:
 			text = "PERFECT!"
 			color = GOLD
 			font_size = 26
+		"good":
+			text = "GREAT!"
+			color = Color(0.80, 0.88, 0.55)
+			font_size = 24
 		"partial":
-			text = "GOOD"
+			text = "OK"
 			color = Color(0.70, 0.82, 0.95)
 			font_size = 22
 		"critical":
@@ -635,23 +641,15 @@ func _spawn_qte_result_popup(result: String, pos: Vector2) -> void:
 			color = Color(1.0, 0.90, 0.30)
 			font_size = 28
 		"normal":
-			text = "HIT"
-			color = Color(0.70, 0.82, 0.95)
-			font_size = 22
+			text = "WEAK"
+			color = Color(0.65, 0.55, 0.50)
+			font_size = 20
 		"perfect_defense":
-			text = "BLOCKED!"
+			text = "DODGED!"
 			color = Color(0.30, 0.85, 0.55)
 			font_size = 26
 		"failed_defense":
 			text = "HIT!"
-			color = Color(0.85, 0.30, 0.25)
-			font_size = 22
-		"clinch_won":
-			text = "CLINCH WON!"
-			color = Color(0.35, 0.90, 0.50)
-			font_size = 24
-		"clinch_lost":
-			text = "CLINCH LOST"
 			color = Color(0.85, 0.30, 0.25)
 			font_size = 22
 		_:
@@ -674,8 +672,9 @@ func _spawn_qte_result_popup(result: String, pos: Vector2) -> void:
 	tween.tween_property(label, "modulate:a", 0.0, 0.7).set_delay(0.2)
 	tween.chain().tween_callback(label.queue_free)
 
-	if result in ["perfect", "critical", "perfect_defense", "clinch_won"]:
+	if result in ["perfect", "critical", "good", "perfect_defense"]:
 		Juice.scale_bounce(label, 1.4, 0.3)
+		Juice.screen_flash(self, Color(1, 1, 1, 0.12), 0.1)
 
 # =============================================================================
 # Step Damage Application
@@ -683,8 +682,6 @@ func _spawn_qte_result_popup(result: String, pos: Vector2) -> void:
 
 func _apply_step_damage(result: Dictionary, is_player_attacking: bool, qte_result: String) -> void:
 	var damage: int = result.get("damage", 0)
-	var stam_atk: int = result.get("stamina_cost_attacker", 0)
-	var stam_def: int = result.get("stamina_cost_defender", 0)
 	var heat := GameManager.get_heat()
 	var is_heated := heat >= 2.5
 
@@ -692,42 +689,63 @@ func _apply_step_damage(result: Dictionary, is_player_attacking: bool, qte_resul
 	var is_big_hit := qte_result in ["perfect", "critical"]
 	var is_good_defense := qte_result == "perfect_defense"
 
-	# Clinch: only apply stamina (no damage)
-	if result.get("clinch", false):
-		if is_player_attacking:
-			GameManager.player_stamina = clampi(GameManager.player_stamina - stam_atk, 0, GameManager.player_max_stamina)
-			GameManager.opponent_stamina = clampi(GameManager.opponent_stamina - stam_def, 0, GameManager.opponent_max_stamina)
-		else:
-			GameManager.opponent_stamina = clampi(GameManager.opponent_stamina - stam_atk, 0, GameManager.opponent_max_stamina)
-			GameManager.player_stamina = clampi(GameManager.player_stamina - stam_def, 0, GameManager.player_max_stamina)
-		if result.get("clinch_won", false):
-			Juice.flash(player_sprite, Color(0.3, 0.8, 0.5, 0.5), 0.15)
-		_update_ui()
-		return
-
 	if is_player_attacking:
 		GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - damage)
-		GameManager.player_stamina = clampi(GameManager.player_stamina - stam_atk, 0, GameManager.player_max_stamina)
-		GameManager.opponent_stamina = clampi(GameManager.opponent_stamina - stam_def, 0, GameManager.opponent_max_stamina)
 
 		if damage > 0:
-			var shake := 10.0 if is_big_hit else 6.0
-			Juice.screen_shake(opponent_sprite, shake, 0.14)
+			# Punch impact sound based on action name
+			var action_name: String = result.get("action_name", "jab")
+			AudioManager.play_punch(action_name, is_big_hit)
+			# Attacker lunges forward
+			Juice.hit_lunge(player_sprite, 1.0, 15.0, 0.18)
+			# Target recoils
+			var shake := 12.0 if is_big_hit else 6.0
+			Juice.screen_shake(opponent_sprite, shake, 0.16)
 			Juice.flash(opponent_sprite, Color(1, 0.3, 0.3), 0.15)
 			Juice.damage_popup(self, damage, opponent_sprite.global_position + Vector2(60, 0), is_heated or is_big_hit)
+			# Impact burst at hit point
+			var hit_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
+			if is_big_hit:
+				Juice.impact_burst(self, hit_pos, Color(1.0, 0.9, 0.3, 0.95), 55.0)
+				Juice.screen_shake(self, 4.0, 0.1)
+				Juice.bar_punch(opponent_hp_bar)
+			else:
+				Juice.impact_burst(self, hit_pos, Color(1.0, 0.7, 0.4, 0.7), 35.0)
+			Juice.bar_punch(opponent_hp_bar)
 		elif result.get("dodged", false):
-			Juice.flash(opponent_sprite, Color(0.5, 0.5, 0.8, 0.5), 0.1)
+			# Opponent dodged — they sway smoothly
+			AudioManager.play_dodge()
+			Juice.dodge_slide(opponent_sprite, 1.0, 25.0, 0.3)
+			Juice.afterimage(self, opponent_sprite, Color(0.5, 0.5, 0.8, 0.4))
+		elif qte_result == "miss":
+			AudioManager.play_miss()
 	else:
 		GameManager.player_hp = maxi(0, GameManager.player_hp - damage)
-		GameManager.opponent_stamina = clampi(GameManager.opponent_stamina - stam_atk, 0, GameManager.opponent_max_stamina)
-		GameManager.player_stamina = clampi(GameManager.player_stamina - stam_def, 0, GameManager.player_max_stamina)
 
 		if damage > 0:
-			Juice.screen_shake(player_sprite, 5.0, 0.12)
+			AudioManager.play_hit_taken()
+			Juice.screen_shake(player_sprite, 6.0, 0.14)
 			Juice.flash(player_sprite, Color(1, 0.3, 0.3), 0.15)
 			Juice.damage_popup(self, damage, player_sprite.global_position + Vector2(60, 0), false)
+			var hit_pos := player_sprite.global_position + player_sprite.size * 0.5
+			Juice.impact_burst(self, hit_pos, Color(0.9, 0.3, 0.3, 0.7), 30.0)
+			Juice.bar_punch(player_hp_bar)
+			# Screen shake the whole scene for heavy hits
+			if damage >= 15:
+				Juice.screen_shake(self, 3.0, 0.08)
 		elif is_good_defense:
-			Juice.flash(player_sprite, Color(0.3, 0.6, 1.0, 0.6), 0.12)
+			# Perfect defense — satisfying block
+			AudioManager.play_perfect_block()
+			Juice.dodge_slide(player_sprite, -1.0, 12.0, 0.25)
+			Juice.flash(player_sprite, Color(0.3, 0.6, 1.0, 0.7), 0.15)
+			Juice.screen_shake(player_sprite, 3.0, 0.08)
+			var block_pos := player_sprite.global_position + player_sprite.size * 0.5
+			Juice.impact_burst(self, block_pos, Color(0.3, 0.6, 1.0, 0.6), 30.0)
+		elif result.get("dodged", false):
+			# Player dodged — smooth sway + afterimage
+			AudioManager.play_dodge_smooth()
+			Juice.dodge_slide(player_sprite, -1.0, 28.0, 0.35)
+			Juice.afterimage(self, player_sprite, Color(0.3, 0.8, 0.5, 0.4))
 
 	_update_ui()
 
@@ -750,61 +768,10 @@ func _apply_sequential_combo(combo: Dictionary, result1: Dictionary, result2: Di
 	var effect: String = combo.get("effect", "")
 
 	match effect:
-		"guaranteed_hit_action2":
-			if is_player and result1.get("dodged", false):
-				# Player dodged in action1 → action2 guaranteed hit
-				if result2.get("dodged", false):
-					result2["dodged"] = false
-					result2["damage"] = maxi(result2.get("damage", 0), 5)
-					result2.messages.append("[color=yellow]Slip Counter! Guaranteed hit![/color]")
-
-		"half_stamina_action2":
-			if is_player:
-				@warning_ignore("integer_division")
-				result2["stamina_cost_attacker"] = result2.get("stamina_cost_attacker", 0) / 2
-
 		"bonus_damage_action2":
 			var bonus: int = combo.get("bonus_damage", 3)
-			if is_player:
-				result2["damage"] = result2.get("damage", 0) + bonus
-			else:
-				result2["damage"] = result2.get("damage", 0) + bonus
+			result2["damage"] = result2.get("damage", 0) + bonus
 			result2.messages.append("[color=yellow]COMBO: %s! +%d![/color]" % [combo.get("name", ""), bonus])
-
-		"stored_damage_action2":
-			if is_player and result1.get("blocked", false):
-				var stored: int = result1.get("damage", 0)
-				result2["damage"] = result2.get("damage", 0) + stored
-				result2.messages.append("[color=yellow]Parry Hook! +%d stored damage![/color]" % stored)
-
-		"enhanced_block_action2":
-			if is_player:
-				var hp_rec: int = combo.get("hp_recovery", 5)
-				GameManager.player_hp = mini(GameManager.player_hp + hp_rec, GameManager.player_max_hp)
-				result2.messages.append("[color=yellow]Hunker Down! +%d HP![/color]" % hp_rec)
-
-		"reduced_dodge_action2":
-			if is_player and result1.get("damage", 0) > 0:
-				if result2.get("dodged", false):
-					if randf() < 0.5:
-						result2["dodged"] = false
-						result2["damage"] = maxi(result2.get("damage", 0), 10)
-						result2.messages.append("[color=yellow]Haymaker Combo! Dodge overridden![/color]")
-
-		"enhanced_dodge":
-			var stam_rec: int = combo.get("stamina_recovery", 5)
-			if is_player:
-				GameManager.player_stamina = mini(
-					GameManager.player_stamina + stam_rec,
-					GameManager.player_max_stamina
-				)
-				result2.messages.append("[color=yellow]Float! +%d stamina![/color]" % stam_rec)
-
-		"stamina_drain":
-			var drain: int = combo.get("stamina_drain", 8)
-			if is_player:
-				GameManager.opponent_stamina = maxi(0, GameManager.opponent_stamina - drain)
-				result2.messages.append("[color=yellow]Body Work! -%d opponent stamina![/color]" % drain)
 
 	if not combo.is_empty():
 		GameManager.stats["combos_landed"] = GameManager.stats.get("combos_landed", 0) + 1
@@ -813,25 +780,17 @@ func _apply_sequential_combo(combo: Dictionary, result1: Dictionary, result2: Di
 func _build_compat_result(step_results: Array) -> Dictionary:
 	var total_dealt := 0
 	var total_taken := 0
-	var total_player_stam := 0
-	var total_opp_stam := 0
 
 	for i in step_results.size():
 		var r: Dictionary = step_results[i]
 		if i == 0 or i == 2:  # player attack steps
 			total_dealt += r.get("damage", 0)
-			total_player_stam -= r.get("stamina_cost_attacker", 0)
-			total_opp_stam -= r.get("stamina_cost_defender", 0)
 		else:  # opponent attack steps
 			total_taken += r.get("damage", 0)
-			total_opp_stam -= r.get("stamina_cost_attacker", 0)
-			total_player_stam -= r.get("stamina_cost_defender", 0)
 
 	return {
 		"player_damage_dealt": total_dealt,
 		"player_damage_taken": total_taken,
-		"player_stamina_change": total_player_stam,
-		"opponent_stamina_change": total_opp_stam,
 		"action1_result": step_results[0] if step_results.size() > 0 else {},
 		"action2_result": step_results[2] if step_results.size() > 2 else {},
 		"messages": [],
@@ -872,35 +831,37 @@ func _reset_action_highlights() -> void:
 
 func _set_actions_disabled(disabled: bool) -> void:
 	for btn in action_container.get_children():
-		(btn as Button).disabled = disabled
+		var b := btn as Button
+		b.disabled = disabled
+		if disabled:
+			b.focus_mode = Control.FOCUS_NONE
+			b.release_focus()
+		else:
+			b.focus_mode = Control.FOCUS_ALL
+	# Also disable tactic buttons to prevent focus stealing during QTE
+	var tactic_container := get_node_or_null("%TacticHandContainer")
+	if tactic_container:
+		for child in tactic_container.get_children():
+			if child is PanelContainer:
+				for sub in child.get_children():
+					if sub is Button:
+						sub.disabled = disabled
+						if disabled:
+							sub.focus_mode = Control.FOCUS_NONE
+							sub.release_focus()
+						else:
+							sub.focus_mode = Control.FOCUS_ALL
 
 func _update_ui() -> void:
 	player_hp_bar.max_value = GameManager.player_max_hp
 	player_hp_bar.value = GameManager.player_hp
 	player_hp_label.text = "HP: %d/%d" % [GameManager.player_hp, GameManager.player_max_hp]
-	player_stamina_bar.max_value = GameManager.player_max_stamina
-	player_stamina_bar.value = GameManager.player_stamina
-	player_stamina_label.text = "STA: %d/%d" % [GameManager.player_stamina, GameManager.player_max_stamina]
 	player_name_label.text = GameManager.player_fighter.get("name", "Player")
 
 	opponent_hp_bar.max_value = GameManager.opponent_max_hp
 	opponent_hp_bar.value = GameManager.opponent_hp
 	opponent_hp_label.text = "HP: %d/%d" % [GameManager.opponent_hp, GameManager.opponent_max_hp]
-	opponent_stamina_bar.max_value = GameManager.opponent_max_stamina
-	opponent_stamina_bar.value = GameManager.opponent_stamina
-	opponent_stamina_label.text = "STA: %d/%d" % [GameManager.opponent_stamina, GameManager.opponent_max_stamina]
 	opponent_name_label.text = GameManager.current_opponent.get("name", "Opponent")
-
-	# Disable actions if not enough stamina (only matters during selection)
-	if is_player_turn and not _executing:
-		var all_actions := BoxingAction.create_all()
-		var i := 0
-		for action_type in all_actions:
-			if i < action_container.get_child_count():
-				var btn: Button = action_container.get_child(i)
-				var action: BoxingAction = all_actions[action_type]
-				btn.disabled = action.stamina_cost > GameManager.player_stamina and action.stamina_cost > 0
-			i += 1
 
 func _add_to_log(text: String) -> void:
 	combat_log.append_text(text + "\n")
@@ -911,15 +872,24 @@ func _on_ko(winner: String) -> void:
 	is_player_turn = false
 	_executing = false
 
+	AudioManager.play_ko()
 	MusicManager.muffle(true, 0.2)
 	Juice.ko_slowmo(get_tree(), 1.0)
+	Juice.screen_flash(self, Color(1, 1, 1, 0.5), 0.25)
 
 	if winner == "player":
 		_add_to_log("[color=green]KO! You win the fight![/color]")
-		Juice.screen_shake(self, 15.0, 0.4)
+		Juice.screen_shake(self, 20.0, 0.5)
+		Juice.hit_lunge(player_sprite, 1.0, 25.0, 0.3)
+		var ko_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
+		Juice.impact_burst(self, ko_pos, Color(1.0, 0.85, 0.2, 1.0), 80.0)
+		Juice.flash(opponent_sprite, Color(1, 0.2, 0.2), 0.3)
 	else:
 		_add_to_log("[color=red]KO! You've been knocked out![/color]")
-		Juice.screen_shake(self, 15.0, 0.4)
+		Juice.screen_shake(self, 20.0, 0.5)
+		var ko_pos := player_sprite.global_position + player_sprite.size * 0.5
+		Juice.impact_burst(self, ko_pos, Color(0.9, 0.2, 0.2, 1.0), 80.0)
+		Juice.flash(player_sprite, Color(1, 0.2, 0.2), 0.3)
 
 	_set_actions_disabled(true)
 

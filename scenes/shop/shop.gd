@@ -10,7 +10,6 @@ extends Control
 @onready var rep_big_label: Label = %RepBigLabel
 @onready var hand_stat_label: Label = %HandStatLabel
 @onready var hp_stat_label: Label = %HpStatLabel
-@onready var stamina_stat_label: Label = %StaminaStatLabel
 @onready var perks_container: VBoxContainer = %PerksContainer
 @onready var continue_btn: Button = %ContinueBtn
 @onready var rep_breakdown_label: Label = %RepBreakdownLabel
@@ -70,7 +69,6 @@ func _update_header() -> void:
 	var hand_count := GameManager.tactic_hand.size()
 	hand_stat_label.text = "%d / %d" % [hand_count, TacticCardSystem.MAX_HAND_SIZE]
 	hp_stat_label.text = "%d" % GameManager.player_max_hp
-	stamina_stat_label.text = "%d" % GameManager.player_max_stamina
 	_build_perks_list()
 
 func _build_perks_list() -> void:
@@ -327,7 +325,10 @@ func _on_buy_item(item: Dictionary, _unused_shop_type: String) -> void:
 
 	var result := GameManager.purchase_shop_item(item)
 	if not result.success:
+		AudioManager.play_error()
 		return
+	AudioManager.play_shop_buy()
+	Juice.screen_flash(self, Color(0.9, 0.85, 0.3, 0.15), 0.15)
 
 	_is_rebuilding_shop = true
 

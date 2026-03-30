@@ -278,6 +278,7 @@ func _create_perk_card(perk: Dictionary, index: int) -> PanelContainer:
 func _on_card_hover_enter(index: int, panel: PanelContainer, style: StyleBoxFlat) -> void:
 	if index == selected_index:
 		return
+	AudioManager.play_button_hover()
 	# Lift up and brighten border
 	var tween := create_tween()
 	tween.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
@@ -301,8 +302,10 @@ func _on_card_hover_exit(index: int, panel: PanelContainer, style: StyleBoxFlat)
 
 
 func _on_card_selected(index: int) -> void:
+	AudioManager.play_button_click()
 	selected_index = index
 	continue_btn.disabled = false
+	Juice.scale_bounce(card_panels[index], 1.06, 0.25)
 
 	for i in card_panels.size():
 		var panel: PanelContainer = card_panels[i]
@@ -340,6 +343,8 @@ func _on_continue() -> void:
 		_go_to_shop_or_next()
 		return
 
+	AudioManager.play_perk_draft()
+	Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.2), 0.2)
 	GameManager.add_perk(chosen_perk)
 
 	_apply_immediate_effects(chosen_perk)
@@ -360,8 +365,6 @@ func _apply_immediate_effects(perk: Dictionary) -> void:
 		GameManager.player_max_hp = int(GameManager.player_max_hp * mult)
 		GameManager.player_hp = mini(GameManager.player_hp, GameManager.player_max_hp)
 
-	# Endurance: +max stamina
+	# Endurance: stamina removed, perk is a no-op
 	if effect == "max_stamina_bonus":
-		var bonus := int(PerkSystem.get_named_value(perk, "stamina", 20.0))
-		GameManager.player_max_stamina += bonus
-		GameManager.player_stamina = mini(GameManager.player_stamina + bonus, GameManager.player_max_stamina)
+		pass

@@ -313,6 +313,9 @@ func _reset_square_style(row: int, col: int) -> void:
 	style.border_color = base_color.darkened(0.2)
 
 func _on_wrong_move(row: int, col: int) -> void:
+	AudioManager.play_sfx_varied(AudioManager.sfx_error, -4.0)
+	Juice.screen_shake(self, 5.0, 0.15)
+	Juice.flash(board_grid, Color(0.9, 0.2, 0.2, 0.4), 0.12)
 	mistakes += 1
 
 	if mistakes <= free_mistakes:
@@ -341,6 +344,7 @@ func _on_wrong_move(row: int, col: int) -> void:
 	Juice.screen_shake(board_grid, 5.0, 0.15)
 
 func _on_correct_move(from_row: int, from_col: int, to_row: int, to_col: int) -> void:
+	AudioManager.play_piece_move()
 	status_label.text = "Correct! Keep going..."
 	status_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.3))
 	
@@ -368,6 +372,7 @@ func _on_correct_move(from_row: int, from_col: int, to_row: int, to_col: int) ->
 	tween.tween_callback(func(): status_label.add_theme_color_override("font_color", Color.WHITE)).set_delay(0.5)
 
 func _on_puzzle_solved() -> void:
+	AudioManager.play_puzzle_solved()
 	is_active = false
 	var solve_time := (Time.get_ticks_msec() / 1000.0) - solve_start_time
 	var real_mistakes := maxi(0, mistakes - free_mistakes)
@@ -376,6 +381,8 @@ func _on_puzzle_solved() -> void:
 	status_label.text = HeatSystem.get_heat_text(GameManager.get_heat())
 	status_label.add_theme_color_override("font_color", Color(0.3, 0.95, 0.4))
 	Juice.punch_text(status_label)
+	Juice.screen_flash(self, Color(0.3, 0.95, 0.3, 0.15), 0.2)
+	Juice.scale_bounce(board_grid, 1.02, 0.3)
 
 	_refresh_board()
 	_celebrate_solve()
@@ -407,13 +414,15 @@ func _celebrate_solve() -> void:
 			bounce_tween.tween_property(btn, "scale", Vector2.ONE, 0.15).set_ease(Tween.EASE_OUT)
 
 func _on_puzzle_failed() -> void:
+	AudioManager.play_puzzle_failed()
 	is_active = false
 	var real_mistakes := maxi(0, mistakes - free_mistakes)
 	GameManager.set_chess_result(false, 0.0, time_limit, real_mistakes)
 
 	status_label.text = "Time's up! Opponent gets the bonus!"
 	status_label.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
-	Juice.screen_shake(self, 8.0, 0.3)
+	Juice.screen_shake(self, 10.0, 0.35)
+	Juice.screen_flash(self, Color(0.9, 0.15, 0.15, 0.2), 0.2)
 	MusicManager.muffle(true, 0.3)
 
 	var tween := create_tween()

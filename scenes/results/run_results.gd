@@ -16,9 +16,14 @@ func _ready() -> void:
 	if won:
 		result_label.text = "CHAMPION!"
 		result_label.add_theme_color_override("font_color", Color(0.9, 0.78, 0.3))
+		AudioManager.play_victory()
+		Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.25), 0.3)
+		Juice.screen_shake(self, 8.0, 0.3)
 	else:
 		result_label.text = "KNOCKED OUT"
 		result_label.add_theme_color_override("font_color", Color(0.8, 0.3, 0.3))
+		AudioManager.play_defeat()
+		Juice.screen_shake(self, 10.0, 0.35)
 
 	# Rating
 	_add_rating(score_data)
@@ -177,4 +182,5 @@ func _add_perks() -> void:
 		stats_container.add_child(label)
 
 func _on_retry() -> void:
+	AudioManager.play_button_click()
 	GameManager.change_phase(GameManager.GamePhase.MENU)

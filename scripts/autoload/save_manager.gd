@@ -11,8 +11,20 @@ var unlocked_perks: Array = []  # Perks unlocked via achievements
 var best_scores: Dictionary = {}  # {path: {score, rating}}
 var total_runs: int = 0
 
+## User settings (audio, display, CRT) — persisted alongside meta-progression.
+var settings: Dictionary = {
+	"master_volume": 80,
+	"music_volume": 80,
+	"sfx_volume": 80,
+	"crt_enabled": true,
+	"crt_intensity": 100,
+	"screen_shake": true,
+	"fullscreen": false,
+}
+
 func _ready() -> void:
 	load_save()
+	call_deferred("_apply_settings")
 
 func save_data() -> void:
 	var data := {
@@ -21,6 +33,7 @@ func save_data() -> void:
 		"unlocked_perks": unlocked_perks,
 		"best_scores": best_scores,
 		"total_runs": total_runs,
+		"settings": settings,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -44,6 +57,11 @@ func load_save() -> void:
 	unlocked_perks = data.get("unlocked_perks", [])
 	best_scores = data.get("best_scores", {})
 	total_runs = int(data.get("total_runs", 0))
+
+	# Merge saved settings over defaults (so new keys get defaults)
+	var saved_settings: Dictionary = data.get("settings", {})
+	for key in saved_settings:
+		settings[key] = saved_settings[key]
 
 func unlock_fighter(fighter_id: String) -> void:
 	if fighter_id not in unlocked_fighters:
@@ -70,3 +88,33 @@ func record_run(score_data: Dictionary, path: String) -> void:
 	if score_data.get("score", 0) > current_best.get("score", 0):
 		best_scores[key] = {"score": score_data.score, "rating": score_data.rating}
 	save_data()
+
+## Apply persisted settings to audio buses, CRT overlay, and display mode.
+## Called deferred from _ready so all autoloads are initialized first.
+func _apply_settings() -> void:
+	# Audio buses
+	var master_vol: float = settings.get("master_volume", 80)
+	var music_vol: float = settings.get("music_volume", 80)
+	var sfx_vol: float = settings.get("sfx_volume", 80)
+
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), _percent_to_db(master_vol))
+	var music_idx := AudioServer.get_bus_index("Music")
+	if music_idx >= 0:
+		AudioServer.set_bus_volume_db(music_idx, _percent_to_db(music_vol))
+	var sfx_idx := AudioServer.get_bus_index("SFX")
+	if sfx_idx >= 0:
+		AudioServer.set_bus_volume_db(sfx_idx, _percent_to_db(sfx_vol))
+
+	# CRT overlay
+	if is_instance_valid(CRTOverlay):
+		CRTOverlay.set_enabled(settings.get("crt_enabled", true))
+		CRTOverlay.set_intensity(float(settings.get("crt_intensity", 100)) / 100.0)
+
+	# Fullscreen
+	if settings.get("fullscreen", false):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+static func _percent_to_db(percent: float) -> float:
+	if percent <= 0:
+		return -80.0
+	return linear_to_db(percent / 100.0)

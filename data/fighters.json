@@ -6,6 +6,7 @@
     "stamina": 100,
     "passive_id": "none",
     "passive_description": "No passive — pure skill",
+    "sprite_base": "rookie",
     "unlocked": true
   },
   {

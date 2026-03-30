@@ -128,6 +128,7 @@ func _build_fighter_cards() -> void:
 		fighter_card_styles.append(card_bg)
 
 func _on_card_hover_enter(style: StyleBoxFlat) -> void:
+	AudioManager.play_button_hover()
 	if style.border_color.a < 0.9:
 		style.border_color = Color(0.9, 0.78, 0.3, 0.45)
 
@@ -136,11 +137,12 @@ func _on_card_hover_exit(style: StyleBoxFlat) -> void:
 		style.border_color = Color(0.9, 0.78, 0.3, 0)
 
 func _on_fighter_selected(fighter: Dictionary, card: PanelContainer, card_bg: StyleBoxFlat) -> void:
+	AudioManager.play_button_click()
 	selected_fighter = fighter
 	confirm_btn.disabled = false
 
 	fighter_name_label.text = fighter.get("name", "???")
-	fighter_stats_label.text = "HP: %d  |  Stamina: %d" % [fighter.get("hp", 0), fighter.get("stamina", 0)]
+	fighter_stats_label.text = "HP: %d" % fighter.get("hp", 0)
 	fighter_passive_label.text = fighter.get("passive_description", "No passive")
 
 	for style in fighter_card_styles:
@@ -152,4 +154,5 @@ func _on_fighter_selected(fighter: Dictionary, card: PanelContainer, card_bg: St
 func _on_confirm() -> void:
 	if selected_fighter.is_empty():
 		return
+	AudioManager.play_confirm()
 	GameManager.start_new_run(selected_fighter)

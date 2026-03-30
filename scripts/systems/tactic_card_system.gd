@@ -96,7 +96,7 @@ static func resolve_tactics(active_tactics: Array, opponent_hp_pct: float) -> Di
 			"pin":
 				mods.force_opponent_action = {
 					"slot": int(values.get("slot", 1)),
-					"action": values.get("forced_action", "BLOCK"),
+					"action": values.get("forced_action", "JAB"),
 				}
 
 			"en_passant":
@@ -131,9 +131,9 @@ static func get_card_combat_text(card: Dictionary) -> String:
 	var effect: String = card.get("effect", "")
 	match effect:
 		"fork": return "Opponent acts blind this turn"
-		"pin": return "Force opponent to BLOCK (slot 2)"
-		"en_passant": return "Opponent DODGE auto-fails, 1.5x damage"
-		"discovery": return "Your BLOCK also deals damage"
+		"pin": return "Force opponent to JAB (slot 2)"
+		"en_passant": return "Weak hit guaranteed, 1.5x damage"
+		"discovery": return "Your defense also deals damage"
 		"zwischenzug": return "Free JAB between opponent actions"
 		"sacrifice": return "Lose 8 HP, both actions guaranteed hit"
 		"back_rank": return "If opp <30% HP: UPPERCUT ignores all defense"
