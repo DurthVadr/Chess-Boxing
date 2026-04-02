@@ -5,9 +5,9 @@
 
 [sub_resource type="StyleBoxFlat" id="proceed_normal"]
 content_margin_left = 32.0
-content_margin_top = 18.0
+content_margin_top = 14.0
 content_margin_right = 32.0
-content_margin_bottom = 18.0
+content_margin_bottom = 14.0
 bg_color = Color(0.06, 0.05, 0.10, 1)
 border_width_left = 3
 border_width_top = 3
@@ -21,9 +21,9 @@ corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="proceed_hover"]
 content_margin_left = 32.0
-content_margin_top = 18.0
+content_margin_top = 14.0
 content_margin_right = 32.0
-content_margin_bottom = 18.0
+content_margin_bottom = 14.0
 bg_color = Color(0.60, 0.48, 0.10, 1)
 border_width_left = 4
 border_width_top = 4
@@ -36,13 +36,12 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 shadow_color = Color(0.9, 0.78, 0.3, 0.50)
 shadow_size = 12
-shadow_offset = Vector2(0, 0)
 
 [sub_resource type="StyleBoxFlat" id="proceed_pressed"]
 content_margin_left = 32.0
-content_margin_top = 18.0
+content_margin_top = 14.0
 content_margin_right = 32.0
-content_margin_bottom = 18.0
+content_margin_bottom = 14.0
 bg_color = Color(0.72, 0.58, 0.14, 1)
 border_width_left = 4
 border_width_top = 4
@@ -85,20 +84,63 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.02, 0.05, 0.02, 1)
 
-[node name="Title" type="Label" parent="."]
+[node name="HeaderVBox" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -280.0
-offset_top = 14.0
-offset_right = 280.0
-offset_bottom = 58.0
+anchors_preset = -1
+anchor_left = 0.15
+anchor_right = 0.85
+offset_top = 10.0
+offset_bottom = 80.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 30
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="HeaderVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
 theme_override_colors/font_color = Color(0.9, 0.78, 0.35, 1)
 text = "TOURNAMENT BRACKET"
 horizontal_alignment = 1
+
+[node name="TournamentNum" type="Label" parent="HeaderVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.75, 0.72, 0.65, 1)
+text = "Tournament 1"
+horizontal_alignment = 1
+
+[node name="EloInfo" type="Label" parent="HeaderVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.65, 0.60, 0.50, 1)
+text = "Your ELO: 0"
+horizontal_alignment = 1
+
+[node name="BracketLines" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BracketArea" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.04
+anchor_top = 0.14
+anchor_right = 0.96
+anchor_bottom = 0.84
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+alignment = 1
 
 [node name="ProceedBtn" type="Button" parent="."]
 unique_name_in_owner = true
@@ -108,14 +150,13 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -230.0
-offset_top = -88.0
-offset_right = 230.0
-offset_bottom = -10.0
+offset_left = -130.0
+offset_top = -68.0
+offset_right = 130.0
+offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 0
-custom_minimum_size = Vector2(460, 0)
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 26
 theme_override_colors/font_color = Color(0.92, 0.80, 0.28, 1)
 theme_override_colors/font_hover_color = Color(0.06, 0.05, 0.10, 1)
 theme_override_colors/font_pressed_color = Color(0.06, 0.05, 0.10, 1)

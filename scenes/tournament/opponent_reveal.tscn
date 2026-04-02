@@ -37,12 +37,12 @@ corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="flavor_strip_bg"]
 content_margin_left = 40.0
-content_margin_top = 10.0
+content_margin_top = 12.0
 content_margin_right = 40.0
-content_margin_bottom = 10.0
-bg_color = Color(0.02, 0.02, 0.04, 0.94)
-border_width_top = 1
-border_color = Color(0.25, 0.22, 0.15, 0.5)
+content_margin_bottom = 12.0
+bg_color = Color(0.0, 0.0, 0.0, 0.82)
+border_width_top = 2
+border_color = Color(0.42, 0.36, 0.15, 0.6)
 
 [sub_resource type="StyleBoxFlat" id="fight_normal"]
 content_margin_left = 40.0
@@ -288,8 +288,11 @@ theme_override_styles/panel = SubResource("flavor_strip_bg")
 [node name="FlavorLabel" type="Label" parent="FlavorStrip"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
-theme_override_colors/font_color = Color(0.52, 0.50, 0.55, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.88, 0.86, 0.80, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.6)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
 text = "..."
 horizontal_alignment = 1
 autowrap_mode = 2

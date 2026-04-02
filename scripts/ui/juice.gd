@@ -106,6 +106,39 @@ static func damage_popup(parent: Control, damage: int, position: Vector2, is_hea
 	tween.tween_property(label, "modulate:a", 0.0, 0.8).set_delay(0.3)
 	tween.chain().tween_callback(label.queue_free)
 
+## "BLOCKED" text that pops in big then slowly drifts down and fades
+static func blocked_popup(parent: Control, position: Vector2) -> void:
+	if not is_instance_valid(parent):
+		return
+	var label := Label.new()
+	label.text = "BLOCKED"
+	label.add_theme_font_size_override("font_size", 36)
+	label.add_theme_color_override("font_color", Color(0.35, 0.65, 1.0))
+	label.add_theme_color_override("font_outline_color", Color(0.08, 0.06, 0.18))
+	label.add_theme_constant_override("outline_size", 4)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.z_index = 200
+	label.pivot_offset = Vector2(80, 20)
+	label.position = position - Vector2(80, 20)
+	label.scale = Vector2(0.3, 0.3)
+	label.modulate.a = 0.0
+	parent.add_child(label)
+
+	var tween := label.create_tween()
+	# Pop in
+	tween.set_parallel(true)
+	tween.tween_property(label, "scale", Vector2(1.2, 1.2), 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(label, "modulate:a", 1.0, 0.08)
+	# Settle
+	tween.chain().tween_property(label, "scale", Vector2.ONE, 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+	# Hold briefly then drift down and fade
+	tween.tween_interval(0.3)
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", position.y + 40.0, 0.7).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(label, "modulate:a", 0.0, 0.5).set_delay(0.2)
+	tween.chain().tween_callback(label.queue_free)
+
+
 ## Full-screen combo name flash
 static func combo_flash(parent: Control, combo_name: String) -> void:
 	if not is_instance_valid(parent):

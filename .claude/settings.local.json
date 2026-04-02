@@ -23,7 +23,9 @@
       "Bash(mv frame_3.png frame_2.png)",
       "Bash(rm -f frame_7.png.import)",
       "Bash(rm frame_4.png)",
-      "Bash(rm -f frame_6.png.import)"
+      "Bash(rm -f frame_6.png.import)",
+      "Bash(python:*)",
+      "Read(//tmp/**)"
     ]
   }
 }

@@ -11,6 +11,11 @@ var unlocked_perks: Array = []  # Perks unlocked via achievements
 var best_scores: Dictionary = {}  # {path: {score, rating}}
 var total_runs: int = 0
 
+# --- ELO & Tournament Progression ---
+var player_elo: int = 0
+var elo_history: Array = []        # Array of {tournament, elo_before, elo_after, won}
+var tournament_number: int = 1     # Current tournament (persists across runs)
+
 ## User settings (audio, display, CRT) — persisted alongside meta-progression.
 var settings: Dictionary = {
 	"master_volume": 80,
@@ -33,6 +38,9 @@ func save_data() -> void:
 		"unlocked_perks": unlocked_perks,
 		"best_scores": best_scores,
 		"total_runs": total_runs,
+		"player_elo": player_elo,
+		"elo_history": elo_history,
+		"tournament_number": tournament_number,
 		"settings": settings,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -57,6 +65,9 @@ func load_save() -> void:
 	unlocked_perks = data.get("unlocked_perks", [])
 	best_scores = data.get("best_scores", {})
 	total_runs = int(data.get("total_runs", 0))
+	player_elo = int(data.get("player_elo", 0))
+	elo_history = data.get("elo_history", [])
+	tournament_number = int(data.get("tournament_number", 1))
 
 	# Merge saved settings over defaults (so new keys get defaults)
 	var saved_settings: Dictionary = data.get("settings", {})
@@ -81,12 +92,61 @@ func unlock_perk(perk_id: String) -> void:
 func is_fighter_unlocked(fighter_id: String) -> bool:
 	return fighter_id in unlocked_fighters
 
+func get_fighter_required_elo(fighter_id: String) -> int:
+	for fighter in GameManager.all_fighters:
+		if fighter.get("id", "") == fighter_id:
+			return int(fighter.get("required_elo", 0))
+	return 0
+
+func is_fighter_elo_unlocked(fighter_id: String) -> bool:
+	return player_elo >= get_fighter_required_elo(fighter_id)
+
+func reset_all_progress() -> void:
+	unlocked_fighters = ["rookie"]
+	unlocked_achievements = []
+	unlocked_perks = []
+	best_scores = {}
+	total_runs = 0
+	player_elo = 0
+	elo_history = []
+	tournament_number = 1
+	# Keep settings intact — only reset progression
+	save_data()
+
 func record_run(score_data: Dictionary, path: String) -> void:
 	total_runs += 1
 	var key := path if path != "" else "default"
 	var current_best: Dictionary = best_scores.get(key, {})
 	if score_data.get("score", 0) > current_best.get("score", 0):
 		best_scores[key] = {"score": score_data.score, "rating": score_data.rating}
+	save_data()
+
+# =============================================================================
+# ELO System
+# =============================================================================
+
+const ELO_WIN_PER_FIGHT := 75
+const ELO_LOSS_PENALTY_PER_FIGHT := 0
+
+## Apply ELO change from a fight and record it in history.
+func apply_fight_elo(opponent_elo: int, won: bool) -> int:
+	var elo_before := player_elo
+	var delta := ELO_WIN_PER_FIGHT if won else -ELO_LOSS_PENALTY_PER_FIGHT
+	player_elo = maxi(0, player_elo + delta)
+	elo_history.append({
+		"tournament": tournament_number,
+		"elo_before": elo_before,
+		"elo_after": player_elo,
+		"opponent_elo": opponent_elo,
+		"won": won,
+		"delta": delta,
+	})
+	save_data()
+	return delta
+
+## Advance to the next tournament.
+func advance_tournament() -> void:
+	tournament_number += 1
 	save_data()
 
 ## Apply persisted settings to audio buses, CRT overlay, and display mode.

@@ -3,6 +3,7 @@
     "id": "opponent_1",
     "name": "Vinnie 'The Pawn' Kowalski",
     "sprite_base": "vinnie",
+    "sprite_sheet": "res://assets/sprites/sheets/animsheet_punch_1.png",
     "archetype": "brawler",
     "hp": 60,
     "stamina": 80,
@@ -12,6 +13,7 @@
     "flavor_text": "A loudmouth from Brooklyn who learned chess last Tuesday. Hits hard but thinks harder... wait, no, he doesn't think at all.",
     "puzzle_themes": ["mateIn1", "fork", "short"],
     "gimmick": null,
+    "base_elo": 800,
     "fight_position": 1,
     "path": "both"
   },
@@ -19,6 +21,7 @@
     "id": "opponent_suki",
     "name": "Suki 'The Knight' Tanaka",
     "sprite_base": "suki",
+    "sprite_sheet": "res://assets/sprites/sheets/animsheet_punch_3.png",
     "archetype": "glass_cannon",
     "hp": 50,
     "stamina": 110,
@@ -33,6 +36,7 @@
       "description": "Her combos alternate attack and movement (attack+dodge or dodge+attack). Predictable but deadly.",
       "bonus_damage": 5
     },
+    "base_elo": 950,
     "fight_position": 2,
     "path": "both"
   },
@@ -40,6 +44,7 @@
     "id": "opponent_2",
     "name": "Elena 'The Bishop' Petrov",
     "sprite_base": "elena",
+    "sprite_sheet": "res://assets/sprites/sheets/animsheet_punch_4.png",
     "archetype": "technician",
     "hp": 80,
     "stamina": 90,
@@ -54,6 +59,7 @@
       "description": "Gains +2 damage every round regardless of chess performance. Outpace her or get overwhelmed.",
       "per_round": 2
     },
+    "base_elo": 1100,
     "fight_position": 3,
     "path": "elena"
   },
@@ -61,6 +67,7 @@
     "id": "opponent_marcus",
     "name": "Marcus 'The Rook' Williams",
     "sprite_base": "marcus",
+    "sprite_sheet": "res://assets/sprites/sheets/animsheet_punch_2.png",
     "archetype": "turtle",
     "hp": 120,
     "stamina": 70,
@@ -76,6 +83,7 @@
       "min_hp_from_hit": 1,
       "block_heal": 2
     },
+    "base_elo": 1100,
     "fight_position": 3,
     "path": "marcus"
   },
@@ -97,6 +105,7 @@
       "description": "Magnus drafts a perk before each boxing round. By the final round, he has a build. You're in an arms race.",
       "boss_perk_pool": ["boss_prep", "boss_castling", "boss_promotion", "boss_kings_guard", "boss_endgame_vision"]
     },
+    "base_elo": 1400,
     "fight_position": 5,
     "path": "both"
   }

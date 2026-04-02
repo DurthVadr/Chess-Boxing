@@ -19,6 +19,8 @@ var current_opponent_index: int = 0
 var total_opponents: int = 3
 var current_round_in_fight: int = 0
 var max_rounds_per_fight: int = 4
+var run_tournament_number: int = 1   # Snapshot of tournament number for this run
+var run_elo_deltas: Array = []       # ELO changes per fight this run
 
 # --- Fighter State ---
 var player_fighter: Dictionary = {}
@@ -29,11 +31,15 @@ var current_opponent: Dictionary = {}
 var opponent_hp: int = 0
 var opponent_max_hp: int = 0
 
-# --- Move Progression ---
-var unlocked_moves: Array = []       # Array of BoxingAction.ActionType
-var equipped_moves: Array = []       # Array of BoxingAction.ActionType (max 2)
-var move_slots: int = 1              # How many distinct moves player can equip
-var jab_upgraded: bool = false       # True if player chose to upgrade jab
+# --- Move Progression (Legacy — kept for compat) ---
+var unlocked_moves: Array = []
+var equipped_moves: Array = []
+var move_slots: int = 1
+var jab_upgraded: bool = false
+
+# --- Reel System ---
+var reel_symbols: Array = []         # Array of 3 Arrays, each containing BoxingAction.ActionType
+									 # e.g. [[JAB,JAB,JAB,JAB], [JAB,JAB,JAB,JAB], [JAB,JAB,JAB,JAB]]
 
 # --- Heat System (replaces chess_bonus) ---
 var heat: float = 1.0            # Current heat multiplier (1.0–5.0)
@@ -125,16 +131,21 @@ func start_new_run(fighter: Dictionary) -> void:
 	run_active = true
 	current_opponent_index = 0
 	current_round_in_fight = 0
+	run_tournament_number = SaveManager.tournament_number
+	run_elo_deltas.clear()
 
 	player_fighter = fighter
 	player_max_hp = int(fighter.get("hp", 100))
 	player_hp = player_max_hp
 
-	# Move progression — start with JAB only, 1 slot
+	# Move progression — legacy
 	unlocked_moves = [BoxingAction.ActionType.JAB]
 	equipped_moves = [BoxingAction.ActionType.JAB]
 	move_slots = 1
 	jab_upgraded = false
+
+	# Reel system — 3 reels, each starts with 4x JAB
+	reel_symbols = ReelSystem.create_default_reels()
 
 	active_perks.clear()
 	tag_counts.clear()
@@ -273,7 +284,9 @@ func start_fight() -> void:
 	if current_opponent.is_empty():
 		end_run(true)
 		return
-	opponent_max_hp = int(current_opponent.get("hp", 80))
+	# Scale opponent stats by tournament number (each tournament = +15% HP, +10% damage)
+	var tourney_scale := get_tournament_scale()
+	opponent_max_hp = int(current_opponent.get("hp", 80) * tourney_scale.hp)
 	opponent_hp = opponent_max_hp
 	current_round_in_fight = 0
 	previous_heat = 0.0
@@ -355,13 +368,16 @@ func advance_fight_round() -> void:
 		if not drafted.is_empty():
 			opponent_perks.append(drafted)
 
-	if current_round_in_fight % 2 == 0:
-		change_phase(GamePhase.CHESS)
-	else:
-		change_phase(GamePhase.BOXING)
+	change_phase(GamePhase.BOXING)
 
 func _win_fight() -> void:
 	stats.fights_won += 1
+
+	# Apply ELO change for this fight
+	var opp_elo := get_opponent_elo(current_opponent)
+	var delta := SaveManager.apply_fight_elo(opp_elo, true)
+	run_elo_deltas.append({"opponent": current_opponent.get("name", "?"), "delta": delta, "won": true})
+
 	current_opponent_index += 1
 	fight_ended.emit(true)
 
@@ -373,14 +389,16 @@ func _win_fight() -> void:
 	reset_fight_tactics()
 
 	if fight_order_complete and current_opponent_index >= fight_order.size():
-		# fight_order is fully built and we've beaten the last opponent
 		end_run(true)
 	else:
-		# Show move upgrade screen (unlocks new moves after fights 1 and 2)
-		# Then continues to perk draft → shop → tournament
 		change_phase(GamePhase.MOVE_UPGRADE)
 
 func _lose_fight() -> void:
+	# Apply ELO change for the loss
+	var opp_elo := get_opponent_elo(current_opponent)
+	var delta := SaveManager.apply_fight_elo(opp_elo, false)
+	run_elo_deltas.append({"opponent": current_opponent.get("name", "?"), "delta": delta, "won": false})
+
 	fight_ended.emit(false)
 	end_run(false)
 
@@ -416,6 +434,32 @@ func end_run(won: bool) -> void:
 
 	run_ended.emit(won)
 	change_phase(GamePhase.RESULTS)
+
+# =============================================================================
+# ELO & Tournament Scaling
+# =============================================================================
+
+## Get an opponent's effective ELO (base + tournament scaling).
+func get_opponent_elo(opp: Dictionary) -> int:
+	var base_elo: int = int(opp.get("base_elo", 1000))
+	# Each tournament beyond the first adds 75 ELO to opponents
+	return base_elo + (run_tournament_number - 1) * 75
+
+## Get HP and damage scaling multipliers for the current tournament.
+## Tournament 1 = 1.0x, Tournament 2 = 1.15x HP / 1.10x dmg, etc.
+func get_tournament_scale() -> Dictionary:
+	var extra := run_tournament_number - 1
+	return {
+		"hp": 1.0 + extra * 0.15,
+		"damage": 1.0 + extra * 0.10,
+	}
+
+## Get the total ELO change across all fights this run.
+func get_run_elo_total() -> int:
+	var total := 0
+	for entry in run_elo_deltas:
+		total += entry.get("delta", 0)
+	return total
 
 # =============================================================================
 # Heat System
@@ -595,34 +639,24 @@ func get_active_set_bonuses_list() -> Array:
 # =============================================================================
 
 ## Returns what upgrade options are available after the current fight win.
-## Fight 1 win (index was 0 → now 1): choose "Upgrade Jab" or "Unlock Cross"
-## Fight 2 win (index was 1 → now 2): auto-unlock Uppercut, choose 2 of 3 to equip
-## Fight 3+: no new unlocks
+## Now uses reel symbol drafting: player picks symbols to add to their reels.
 func get_move_upgrade_options() -> Dictionary:
-	if current_opponent_index == 1:
-		# After first fight win
-		return {
-			"type": "choose_unlock",
-			"options": ["upgrade_jab", "unlock_cross"],
-		}
-	elif current_opponent_index == 2:
-		# After second fight win — unlock uppercut
-		return {
-			"type": "equip_select",
-			"new_unlock": BoxingAction.ActionType.UPPERCUT,
-		}
-	return {"type": "none"}
+	var pool := ReelSystem.get_draft_pool(current_opponent_index)
+	if pool.is_empty():
+		return {"type": "none"}
+	return {
+		"type": "symbol_draft",
+		"pool": pool,
+		"picks": 2,  # Player drafts 2 symbols per upgrade phase
+	}
 
-func apply_move_choice(choice: String) -> void:
-	if choice == "upgrade_jab":
-		jab_upgraded = true
-		move_slots = 2
-		equipped_moves = [BoxingAction.ActionType.JAB, BoxingAction.ActionType.JAB]
-	elif choice == "unlock_cross":
-		if BoxingAction.ActionType.CROSS not in unlocked_moves:
-			unlocked_moves.append(BoxingAction.ActionType.CROSS)
-		move_slots = 2
-		equipped_moves = [BoxingAction.ActionType.JAB, BoxingAction.ActionType.CROSS]
+## Add a drafted symbol to a specific reel.
+func add_reel_symbol(reel_index: int, symbol: BoxingAction.ActionType) -> void:
+	ReelSystem.add_symbol(reel_symbols, reel_index, symbol)
+
+## Legacy compat
+func apply_move_choice(_choice: String) -> void:
+	pass
 
 func unlock_uppercut() -> void:
 	if BoxingAction.ActionType.UPPERCUT not in unlocked_moves:
@@ -634,6 +668,37 @@ func set_equipped_moves(moves: Array) -> void:
 ## Get the effective damage for JAB (considering upgrade)
 func get_jab_damage_bonus() -> int:
 	return 3 if jab_upgraded else 0
+
+func get_player_attack_pattern(count: int = 3) -> Array:
+	var result: Array = []
+	var raw_pattern: Array = player_fighter.get("attack_pattern", [])
+	var converted: Array = []
+
+	for entry in raw_pattern:
+		var action := _attack_token_to_action(str(entry))
+		converted.append(action)
+
+	if converted.is_empty():
+		for reel in reel_symbols:
+			if reel is Array and not reel.is_empty():
+				converted.append(ReelSystem.random_symbol(reel))
+
+	if converted.is_empty():
+		converted = [BoxingAction.ActionType.JAB]
+
+	for i in count:
+		result.append(converted[i % converted.size()])
+
+	return result
+
+func _attack_token_to_action(token: String) -> BoxingAction.ActionType:
+	match token.to_lower():
+		"cross":
+			return BoxingAction.ActionType.CROSS
+		"uppercut":
+			return BoxingAction.ActionType.UPPERCUT
+		_:
+			return BoxingAction.ActionType.JAB
 
 # =============================================================================
 # Puzzle Selection
@@ -649,6 +714,30 @@ func get_puzzle_for_opponent() -> Dictionary:
 		pool = all_puzzles_medium.duplicate()
 	else:
 		pool = all_puzzles_hard.duplicate()
+
+	if pool.is_empty():
+		pool = all_puzzles_easy.duplicate()
+
+	pool.shuffle()
+	return pool[0]
+
+## Get a quick 1-move puzzle for boxing mini-puzzles. Prefers puzzles with
+## single-move solutions so the player can solve them fast mid-fight.
+func get_mini_puzzle() -> Dictionary:
+	var difficulty: int = current_opponent.get("chess_difficulty", 1)
+	var pool: Array = []
+
+	if difficulty <= 2:
+		pool = all_puzzles_easy.duplicate()
+	elif difficulty <= 4:
+		pool = all_puzzles_medium.duplicate()
+	else:
+		pool = all_puzzles_hard.duplicate()
+
+	# Prefer 1-move solutions for speed
+	var quick: Array = pool.filter(func(p): return p.get("solution", []).size() <= 2)
+	if not quick.is_empty():
+		pool = quick
 
 	if pool.is_empty():
 		pool = all_puzzles_easy.duplicate()

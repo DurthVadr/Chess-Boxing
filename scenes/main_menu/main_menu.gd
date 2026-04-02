@@ -15,6 +15,12 @@ func _ready() -> void:
 	settings_btn.pressed.connect(_on_settings)
 	quit_btn.pressed.connect(_on_quit)
 
+	# Show ELO and tournament info
+	subtitle_label.text = "— Tournament %d  |  ELO: %d —" % [
+		SaveManager.tournament_number,
+		SaveManager.player_elo,
+	]
+
 	# Juice: fade in elements
 	Juice.fade_in(self, 0.5)
 	Juice.scale_bounce(title_label, 1.1, 0.6)

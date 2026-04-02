@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sprite Sheet Frame Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', monospace; display: flex; height: 100vh; overflow: hidden; }
+
+#sidebar {
+  width: 340px; min-width: 340px; background: #16213e; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+}
+#sidebar h2 { color: #e5c04c; font-size: 18px; }
+#sidebar label { font-size: 13px; color: #aaa; }
+#sidebar select, #sidebar input, #sidebar button {
+  width: 100%; padding: 6px 10px; border: 1px solid #333; border-radius: 4px;
+  background: #0f3460; color: #e0e0e0; font-size: 13px;
+}
+#sidebar button { cursor: pointer; background: #e5c04c; color: #1a1a2e; font-weight: bold; border: none; }
+#sidebar button:hover { background: #f0d060; }
+.btn-secondary { background: #2a4a7f !important; color: #e0e0e0 !important; }
+.btn-danger { background: #8b2252 !important; color: #fff !important; }
+
+.frame-list { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
+.frame-item {
+  background: #0f3460; border: 2px solid #333; border-radius: 6px; padding: 8px;
+  cursor: pointer; display: flex; gap: 8px; align-items: center;
+}
+.frame-item.selected { border-color: #e5c04c; }
+.frame-item canvas { border: 1px solid #555; background: #111; flex-shrink: 0; }
+.frame-item .info { font-size: 11px; line-height: 1.5; flex: 1; }
+.frame-item .info span { color: #e5c04c; }
+.frame-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.frame-inputs label { font-size: 11px; }
+.frame-inputs input { width: 100%; padding: 3px 6px; font-size: 12px; }
+
+#canvas-container {
+  flex: 1; overflow: auto; position: relative; background: #111;
+}
+#main-canvas { cursor: crosshair; image-rendering: pixelated; }
+
+#preview-panel {
+  width: 220px; min-width: 220px; background: #16213e; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+}
+#preview-panel h3 { color: #e5c04c; font-size: 14px; }
+#preview-canvas { border: 2px solid #333; border-radius: 4px; background: #0d0a14; image-rendering: pixelated; }
+.anim-controls { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.anim-controls button { width: auto; padding: 4px 10px; font-size: 11px; }
+#fps-slider { width: 100%; }
+#zoom-slider { width: 100%; }
+
+.section-title { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>Sprite Sheet Editor</h2>
+
+  <div>
+    <label>Load Sheet</label>
+    <input type="file" id="file-input" accept="image/png">
+  </div>
+
+  <div>
+    <label>Quick Load</label>
+    <select id="sheet-select">
+      <option value="">-- select preset --</option>
+      <option value="animsheet_punch_1.png">punch_1 — Vinnie (Brawler)</option>
+      <option value="animsheet_punch_2.png">punch_2 — Marcus (Turtle)</option>
+      <option value="animsheet_punch_3.png">punch_3 — Suki (Glass Cannon)</option>
+      <option value="animsheet_punch_4.png">punch_4 — Elena (Technician)</option>
+    </select>
+  </div>
+
+  <div>
+    <label>Zoom: <span id="zoom-val">50%</span></label>
+    <input type="range" id="zoom-slider" min="10" max="100" value="50">
+  </div>
+
+  <div class="section-title">Frames (drag on canvas to adjust)</div>
+
+  <div>
+    <button id="auto-detect-btn" class="btn-secondary">Auto-Detect Frames</button>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <button id="add-frame-btn" class="btn-secondary" style="flex:1;">+ Add Frame</button>
+    <button id="reset-grid-btn" class="btn-secondary" style="flex:1;">Reset 4×2 Grid</button>
+  </div>
+
+  <div class="frame-list" id="frame-list"></div>
+
+  <div class="section-title">Export</div>
+  <div style="display:flex;gap:6px;">
+    <button id="export-btn" style="flex:1;">Export JSON</button>
+    <button id="import-btn" class="btn-secondary" style="flex:1;">Import JSON</button>
+  </div>
+  <input type="file" id="import-input" accept=".json" style="display:none;">
+  <div>
+    <button id="copy-btn">Copy to Clipboard</button>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <canvas id="main-canvas" width="1024" height="1024"></canvas>
+</div>
+
+<div id="preview-panel">
+  <h3>Preview</h3>
+  <canvas id="preview-canvas" width="180" height="180"></canvas>
+
+  <div class="section-title">Animation</div>
+  <div class="anim-controls">
+    <button id="play-idle-btn">Idle</button>
+    <button id="play-punch-btn">Punch</button>
+    <button id="play-all-btn">All Frames</button>
+    <button id="stop-btn" class="btn-danger">Stop</button>
+  </div>
+
+  <div>
+    <label>FPS: <span id="fps-val">10</span></label>
+    <input type="range" id="fps-slider" min="1" max="30" value="10">
+  </div>
+
+  <div class="section-title">Sequences (0-indexed)</div>
+  <div>
+    <label>Idle</label>
+    <input id="idle-seq" value="0,1,2,1,0" style="width:100%;padding:4px;background:#0f3460;color:#e0e0e0;border:1px solid #333;">
+  </div>
+  <div>
+    <label>Punch</label>
+    <input id="punch-seq" value="0,1,2,3,4,5,6,7,0" style="width:100%;padding:4px;background:#0f3460;color:#e0e0e0;border:1px solid #333;">
+  </div>
+
+  <div class="section-title">Current Frame</div>
+  <div id="frame-detail" style="font-size:11px;color:#aaa;"></div>
+</div>
+
+<script>
+const mainCanvas = document.getElementById('main-canvas');
+const ctx = mainCanvas.getContext('2d');
+const previewCanvas = document.getElementById('preview-canvas');
+const pctx = previewCanvas.getContext('2d');
+
+let sheetImage = null;
+let sheetName = '';
+let frames = []; // [{x, y, w, h}]
+let selectedFrame = 0;
+let zoom = 0.5;
+
+// Drag state
+let dragging = null; // {frameIdx, handle, startX, startY, origRect}
+const HANDLE_SIZE = 8;
+
+// Animation state
+let animInterval = null;
+let animSeq = [];
+let animIdx = 0;
+
+// ── Load image ──
+function loadImage(src, name) {
+  const img = new Image();
+  img.onload = () => {
+    sheetImage = img;
+    sheetName = name || 'unknown';
+    mainCanvas.width = img.width * zoom;
+    mainCanvas.height = img.height * zoom;
+    resetGrid();
+    draw();
+  };
+  img.src = src;
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => loadImage(ev.target.result, file.name);
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('sheet-select').addEventListener('change', e => {
+  if (!e.target.value) return;
+  // Try loading from relative path (won't work without a server, fallback to file input)
+  const img = new Image();
+  img.onload = () => loadImage(img.src, e.target.value);
+  img.onerror = () => alert('Cannot load from path directly. Use the file picker above to load:\nassets/sprites/sheets/' + e.target.value);
+  img.src = '../../assets/sprites/sheets/' + e.target.value;
+});
+
+// ── Zoom ──
+const zoomSlider = document.getElementById('zoom-slider');
+zoomSlider.addEventListener('input', e => {
+  zoom = parseInt(e.target.value) / 100;
+  document.getElementById('zoom-val').textContent = e.target.value + '%';
+  if (sheetImage) {
+    mainCanvas.width = sheetImage.width * zoom;
+    mainCanvas.height = sheetImage.height * zoom;
+    draw();
+  }
+});
+
+// ── FPS ──
+const fpsSlider = document.getElementById('fps-slider');
+fpsSlider.addEventListener('input', e => {
+  document.getElementById('fps-val').textContent = e.target.value;
+});
+
+// ── Frame management ──
+function resetGrid() {
+  if (!sheetImage) return;
+  frames = [];
+  const cols = 4, rows = 2;
+  const fw = Math.floor(sheetImage.width / cols);
+  const fh = Math.floor(sheetImage.height / rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      frames.push({ x: c * fw, y: r * fh, w: fw, h: fh });
+    }
+  }
+  selectedFrame = 0;
+  updateFrameList();
+  draw();
+}
+
+function autoDetect() {
+  if (!sheetImage) return;
+  // Draw image to offscreen canvas to read pixels
+  const offscreen = document.createElement('canvas');
+  offscreen.width = sheetImage.width;
+  offscreen.height = sheetImage.height;
+  const octx = offscreen.getContext('2d');
+  octx.drawImage(sheetImage, 0, 0);
+  const data = octx.getImageData(0, 0, sheetImage.width, sheetImage.height).data;
+  const W = sheetImage.width, H = sheetImage.height;
+
+  function alphaAt(x, y) { return data[(y * W + x) * 4 + 3]; }
+
+  // Find row bands (contiguous rows with content)
+  const rowHas = new Uint8Array(H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (alphaAt(x, y) > 10) { rowHas[y] = 1; break; }
+    }
+  }
+
+  const bands = [];
+  let inBand = false, bandStart = 0;
+  for (let y = 0; y < H; y++) {
+    if (rowHas[y] && !inBand) { inBand = true; bandStart = y; }
+    else if (!rowHas[y] && inBand) {
+      inBand = false;
+      if (y - bandStart > 20) bands.push([bandStart, y - 1]);
+    }
+  }
+  if (inBand && H - bandStart > 20) bands.push([bandStart, H - 1]);
+
+  // For each band, find column sprites
+  frames = [];
+  for (const [y1, y2] of bands) {
+    const colHas = new Uint8Array(W);
+    for (let x = 0; x < W; x++) {
+      for (let y = y1; y <= y2; y++) {
+        if (alphaAt(x, y) > 10) { colHas[x] = 1; break; }
+      }
+    }
+
+    let inSprite = false, sx = 0;
+    for (let x = 0; x < W; x++) {
+      if (colHas[x] && !inSprite) { inSprite = true; sx = x; }
+      else if (!colHas[x] && inSprite) {
+        inSprite = false;
+        if (x - sx > 20) frames.push({ x: sx, y: y1, w: x - sx, h: y2 - y1 + 1 });
+      }
+    }
+    if (inSprite && W - sx > 20) frames.push({ x: sx, y: y1, w: W - sx, h: y2 - y1 + 1 });
+  }
+
+  // If we got fewer than 8, some sprites are touching. Try splitting wide frames.
+  if (frames.length < 8) {
+    const avgW = frames.reduce((s, f) => s + f.w, 0) / frames.length;
+    const newFrames = [];
+    for (const f of frames) {
+      if (f.w > avgW * 1.6) {
+        // Try to split this frame
+        const n = Math.round(f.w / avgW);
+        const splitW = Math.floor(f.w / n);
+        for (let i = 0; i < n; i++) {
+          newFrames.push({ x: f.x + i * splitW, y: f.y, w: splitW, h: f.h });
+        }
+      } else {
+        newFrames.push(f);
+      }
+    }
+    frames = newFrames;
+  }
+
+  // Add padding
+  frames = frames.map(f => ({
+    x: Math.max(0, f.x - 4),
+    y: Math.max(0, f.y - 4),
+    w: Math.min(W - f.x + 4, f.w + 8),
+    h: Math.min(H - f.y + 4, f.h + 8)
+  }));
+
+  selectedFrame = 0;
+  updateFrameList();
+  draw();
+}
+
+function addFrame() {
+  const x = sheetImage ? Math.floor(sheetImage.width / 4) : 100;
+  const y = sheetImage ? Math.floor(sheetImage.height / 4) : 100;
+  frames.push({ x: 50, y: 50, w: x, h: y });
+  selectedFrame = frames.length - 1;
+  updateFrameList();
+  draw();
+}
+
+function removeFrame(idx) {
+  frames.splice(idx, 1);
+  if (selectedFrame >= frames.length) selectedFrame = Math.max(0, frames.length - 1);
+  updateFrameList();
+  draw();
+}
+
+const COLORS = ['#e5c04c','#4ce5a0','#4ca0e5','#e54c7a','#a04ce5','#e5a04c','#4ce5e5','#e54c4c',
+                '#7ae54c','#4c4ce5','#e5e54c','#4ce57a'];
+
+function updateFrameList() {
+  const list = document.getElementById('frame-list');
+  list.innerHTML = '';
+
+  frames.forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = 'frame-item' + (i === selectedFrame ? ' selected' : '');
+    item.onclick = () => { selectedFrame = i; updateFrameList(); draw(); previewFrame(i); };
+
+    // Mini preview
+    const mini = document.createElement('canvas');
+    mini.width = 48; mini.height = 48;
+    const mctx = mini.getContext('2d');
+    mctx.imageSmoothingEnabled = false;
+    if (sheetImage) {
+      const scale = Math.min(48 / f.w, 48 / f.h);
+      const dw = f.w * scale, dh = f.h * scale;
+      mctx.drawImage(sheetImage, f.x, f.y, f.w, f.h, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+    }
+    item.appendChild(mini);
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    info.innerHTML = `<span>Frame ${i}</span><br>` +
+      `x:<b>${f.x}</b> y:<b>${f.y}</b><br>` +
+      `w:<b>${f.w}</b> h:<b>${f.h}</b>`;
+    item.appendChild(info);
+
+    // Delete button
+    const del = document.createElement('button');
+    del.textContent = '×';
+    del.className = 'btn-danger';
+    del.style.cssText = 'width:24px;height:24px;padding:0;font-size:16px;flex-shrink:0;';
+    del.onclick = (e) => { e.stopPropagation(); removeFrame(i); };
+    item.appendChild(del);
+
+    list.appendChild(item);
+  });
+}
+
+// ── Drawing ──
+function draw() {
+  if (!sheetImage) return;
+  const w = sheetImage.width * zoom;
+  const h = sheetImage.height * zoom;
+  ctx.clearRect(0, 0, w, h);
+
+  // Checkerboard background
+  const tileSize = 16;
+  for (let y = 0; y < h; y += tileSize) {
+    for (let x = 0; x < w; x += tileSize) {
+      ctx.fillStyle = ((x / tileSize + y / tileSize) % 2 === 0) ? '#222' : '#2a2a2a';
+      ctx.fillRect(x, y, tileSize, tileSize);
+    }
+  }
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(sheetImage, 0, 0, w, h);
+
+  // Draw frame rectangles
+  frames.forEach((f, i) => {
+    const sx = f.x * zoom, sy = f.y * zoom, sw = f.w * zoom, sh = f.h * zoom;
+    const color = COLORS[i % COLORS.length];
+    const isSelected = i === selectedFrame;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isSelected ? 3 : 1.5;
+    ctx.setLineDash(isSelected ? [] : [6, 4]);
+    ctx.strokeRect(sx, sy, sw, sh);
+    ctx.setLineDash([]);
+
+    // Frame number label
+    ctx.fillStyle = color;
+    ctx.font = `bold ${isSelected ? 16 : 12}px monospace`;
+    ctx.fillText(i.toString(), sx + 4, sy + (isSelected ? 18 : 14));
+
+    // Resize handles for selected frame
+    if (isSelected) {
+      const handles = getHandles(f);
+      for (const h of handles) {
+        ctx.fillStyle = '#e5c04c';
+        ctx.fillRect(h.x * zoom - HANDLE_SIZE / 2, h.y * zoom - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(h.x * zoom - HANDLE_SIZE / 2, h.y * zoom - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+      }
+    }
+  });
+}
+
+function getHandles(f) {
+  return [
+    { x: f.x, y: f.y, cursor: 'nw-resize', type: 'tl' },
+    { x: f.x + f.w, y: f.y, cursor: 'ne-resize', type: 'tr' },
+    { x: f.x, y: f.y + f.h, cursor: 'sw-resize', type: 'bl' },
+    { x: f.x + f.w, y: f.y + f.h, cursor: 'se-resize', type: 'br' },
+    { x: f.x + f.w / 2, y: f.y, cursor: 'n-resize', type: 't' },
+    { x: f.x + f.w / 2, y: f.y + f.h, cursor: 's-resize', type: 'b' },
+    { x: f.x, y: f.y + f.h / 2, cursor: 'w-resize', type: 'l' },
+    { x: f.x + f.w / 2, y: f.y + f.h / 2, cursor: 'move', type: 'move' },
+    { x: f.x + f.w, y: f.y + f.h / 2, cursor: 'e-resize', type: 'r' },
+  ];
+}
+
+// ── Mouse interaction ──
+mainCanvas.addEventListener('mousedown', e => {
+  const rect = mainCanvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / zoom;
+  const my = (e.clientY - rect.top) / zoom;
+
+  // Check handles of selected frame first
+  if (selectedFrame >= 0 && selectedFrame < frames.length) {
+    const f = frames[selectedFrame];
+    const handles = getHandles(f);
+    for (const h of handles) {
+      const hx = h.x * zoom, hy = h.y * zoom;
+      const cmx = e.clientX - rect.left, cmy = e.clientY - rect.top;
+      if (Math.abs(cmx - hx) < HANDLE_SIZE && Math.abs(cmy - hy) < HANDLE_SIZE) {
+        dragging = {
+          frameIdx: selectedFrame, handle: h.type,
+          startX: mx, startY: my,
+          origRect: { ...f }
+        };
+        return;
+      }
+    }
+  }
+
+  // Check if clicked inside any frame
+  for (let i = frames.length - 1; i >= 0; i--) {
+    const f = frames[i];
+    if (mx >= f.x && mx <= f.x + f.w && my >= f.y && my <= f.y + f.h) {
+      selectedFrame = i;
+      dragging = {
+        frameIdx: i, handle: 'move',
+        startX: mx, startY: my,
+        origRect: { ...f }
+      };
+      updateFrameList();
+      draw();
+      previewFrame(i);
+      return;
+    }
+  }
+});
+
+mainCanvas.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const rect = mainCanvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / zoom;
+  const my = (e.clientY - rect.top) / zoom;
+  const dx = mx - dragging.startX;
+  const dy = my - dragging.startY;
+  const o = dragging.origRect;
+  const f = frames[dragging.frameIdx];
+
+  switch (dragging.handle) {
+    case 'move':
+      f.x = Math.round(Math.max(0, o.x + dx));
+      f.y = Math.round(Math.max(0, o.y + dy));
+      break;
+    case 'tl':
+      f.x = Math.round(Math.max(0, o.x + dx));
+      f.y = Math.round(Math.max(0, o.y + dy));
+      f.w = Math.round(Math.max(10, o.w - dx));
+      f.h = Math.round(Math.max(10, o.h - dy));
+      break;
+    case 'tr':
+      f.y = Math.round(Math.max(0, o.y + dy));
+      f.w = Math.round(Math.max(10, o.w + dx));
+      f.h = Math.round(Math.max(10, o.h - dy));
+      break;
+    case 'bl':
+      f.x = Math.round(Math.max(0, o.x + dx));
+      f.w = Math.round(Math.max(10, o.w - dx));
+      f.h = Math.round(Math.max(10, o.h + dy));
+      break;
+    case 'br':
+      f.w = Math.round(Math.max(10, o.w + dx));
+      f.h = Math.round(Math.max(10, o.h + dy));
+      break;
+    case 't':
+      f.y = Math.round(Math.max(0, o.y + dy));
+      f.h = Math.round(Math.max(10, o.h - dy));
+      break;
+    case 'b':
+      f.h = Math.round(Math.max(10, o.h + dy));
+      break;
+    case 'l':
+      f.x = Math.round(Math.max(0, o.x + dx));
+      f.w = Math.round(Math.max(10, o.w - dx));
+      break;
+    case 'r':
+      f.w = Math.round(Math.max(10, o.w + dx));
+      break;
+  }
+
+  updateFrameList();
+  draw();
+});
+
+mainCanvas.addEventListener('mouseup', () => { dragging = null; });
+mainCanvas.addEventListener('mouseleave', () => { dragging = null; });
+
+// ── Preview ──
+function previewFrame(idx) {
+  if (!sheetImage || idx < 0 || idx >= frames.length) return;
+  const f = frames[idx];
+  const pw = previewCanvas.width, ph = previewCanvas.height;
+  pctx.clearRect(0, 0, pw, ph);
+
+  // Checkerboard
+  for (let y = 0; y < ph; y += 12) {
+    for (let x = 0; x < pw; x += 12) {
+      pctx.fillStyle = ((x / 12 + y / 12) % 2 === 0) ? '#1a1a2e' : '#222244';
+      pctx.fillRect(x, y, 12, 12);
+    }
+  }
+
+  pctx.imageSmoothingEnabled = false;
+  const scale = Math.min(pw / f.w, ph / f.h);
+  const dw = f.w * scale, dh = f.h * scale;
+  pctx.drawImage(sheetImage, f.x, f.y, f.w, f.h, (pw - dw) / 2, (ph - dh) / 2, dw, dh);
+
+  document.getElementById('frame-detail').innerHTML =
+    `Frame ${idx}<br>Region: ${f.x}, ${f.y}, ${f.w}×${f.h}`;
+}
+
+// ── Animation playback ──
+function stopAnim() {
+  if (animInterval) { clearInterval(animInterval); animInterval = null; }
+}
+
+function playSequence(seq) {
+  stopAnim();
+  animSeq = seq.filter(i => i >= 0 && i < frames.length);
+  if (animSeq.length === 0) return;
+  animIdx = 0;
+  const fps = parseInt(fpsSlider.value) || 10;
+  animInterval = setInterval(() => {
+    previewFrame(animSeq[animIdx]);
+    selectedFrame = animSeq[animIdx];
+    updateFrameList();
+    draw();
+    animIdx = (animIdx + 1) % animSeq.length;
+  }, 1000 / fps);
+}
+
+function parseSeq(str) {
+  return str.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+}
+
+document.getElementById('play-idle-btn').onclick = () => playSequence(parseSeq(document.getElementById('idle-seq').value));
+document.getElementById('play-punch-btn').onclick = () => playSequence(parseSeq(document.getElementById('punch-seq').value));
+document.getElementById('play-all-btn').onclick = () => playSequence(frames.map((_, i) => i));
+document.getElementById('stop-btn').onclick = stopAnim;
+
+// ── Buttons ──
+document.getElementById('auto-detect-btn').onclick = autoDetect;
+document.getElementById('add-frame-btn').onclick = addFrame;
+document.getElementById('reset-grid-btn').onclick = resetGrid;
+
+// ── Export/Import ──
+function buildExport() {
+  return {
+    sheet: sheetName,
+    sheet_width: sheetImage ? sheetImage.width : 0,
+    sheet_height: sheetImage ? sheetImage.height : 0,
+    frames: frames.map((f, i) => ({
+      index: i,
+      x: f.x, y: f.y, w: f.w, h: f.h
+    })),
+    animations: {
+      idle: parseSeq(document.getElementById('idle-seq').value),
+      punch: parseSeq(document.getElementById('punch-seq').value)
+    }
+  };
+}
+
+document.getElementById('export-btn').onclick = () => {
+  const data = JSON.stringify(buildExport(), null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  // Save to data/sprite_frames/ — filename matches what AnimatedPortrait expects
+  a.download = (sheetName || 'spritesheet').replace(/\.png$/, '') + '_frames.json';
+  // Place exported file in: data/sprite_frames/
+  a.click();
+};
+
+document.getElementById('copy-btn').onclick = () => {
+  const data = JSON.stringify(buildExport(), null, 2);
+  navigator.clipboard.writeText(data).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+  });
+};
+
+document.getElementById('import-btn').onclick = () => document.getElementById('import-input').click();
+document.getElementById('import-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.frames) {
+        frames = data.frames.map(f => ({ x: f.x, y: f.y, w: f.w, h: f.h }));
+        selectedFrame = 0;
+        if (data.animations) {
+          if (data.animations.idle) document.getElementById('idle-seq').value = data.animations.idle.join(',');
+          if (data.animations.punch) document.getElementById('punch-seq').value = data.animations.punch.join(',');
+        }
+        updateFrameList();
+        draw();
+      }
+    } catch (err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+});
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft' || e.key === 'a') {
+    selectedFrame = Math.max(0, selectedFrame - 1);
+    updateFrameList(); draw(); previewFrame(selectedFrame);
+  } else if (e.key === 'ArrowRight' || e.key === 'd') {
+    selectedFrame = Math.min(frames.length - 1, selectedFrame + 1);
+    updateFrameList(); draw(); previewFrame(selectedFrame);
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (frames.length > 0) removeFrame(selectedFrame);
+  }
+});
+
+// Initial state
+updateFrameList();
+</script>
+</body>
+</html>

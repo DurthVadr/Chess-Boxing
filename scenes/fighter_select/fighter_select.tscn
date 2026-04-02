@@ -3,21 +3,21 @@
 [ext_resource type="Script" path="res://scenes/fighter_select/fighter_select.gd" id="1"]
 [ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
 
-[sub_resource type="StyleBoxFlat" id="info_panel"]
+[sub_resource type="StyleBoxFlat" id="showcase_panel"]
 content_margin_left = 18.0
-content_margin_top = 14.0
+content_margin_top = 18.0
 content_margin_right = 18.0
-content_margin_bottom = 14.0
-bg_color = Color(0.05, 0.04, 0.08, 0.92)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.42, 0.35, 0.14, 0.7)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+content_margin_bottom = 18.0
+bg_color = Color(0.05, 0.04, 0.08, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.35, 0.14, 0.8)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [node name="FighterSelect" type="Control"]
 layout_mode = 3
@@ -38,6 +38,17 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.06, 0.04, 0.09, 1)
 
+[node name="BlurOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0.2)
+
 [node name="Title" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 5
@@ -53,71 +64,108 @@ theme_override_colors/font_color = Color(0.9, 0.78, 0.35, 1)
 text = "CHOOSE YOUR FIGHTER"
 horizontal_alignment = 1
 
-[node name="FighterContainer" type="HBoxContainer" parent="."]
+[node name="EloLabel" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.05
-anchor_top = 0.11
-anchor_right = 0.95
-anchor_bottom = 0.72
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -260.0
+offset_top = 64.0
+offset_right = 260.0
+offset_bottom = 88.0
 grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 24
-alignment = 1
-
-[node name="InfoBox" type="PanelContainer" parent="."]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.1
-anchor_top = 0.75
-anchor_right = 0.9
-anchor_bottom = 0.91
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("info_panel")
-
-[node name="InfoLayout" type="VBoxContainer" parent="InfoBox"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="FighterNameLabel" type="Label" parent="InfoBox/InfoLayout"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(0.95, 0.92, 0.82, 1)
-text = "Select a fighter..."
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.75, 0.72, 0.65, 1)
+text = "Your ELO: ---"
 horizontal_alignment = 1
 
-[node name="FighterStatsLabel" type="Label" parent="InfoBox/InfoLayout"]
+[node name="MainSplit" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.13
+anchor_right = 0.98
+anchor_bottom = 0.88
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="CarouselArea" type="Control" parent="MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 6.0
+
+[node name="FighterRow" type="HBoxContainer" parent="MainSplit/CarouselArea"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -170.0
+offset_bottom = 170.0
+theme_override_constants/separation = 20
+
+[node name="ShowcasePanel" type="PanelContainer" parent="MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 4.0
+theme_override_styles/panel = SubResource("showcase_panel")
+
+[node name="ShowcaseLayout" type="VBoxContainer" parent="MainSplit/ShowcasePanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ShowcasePortrait" type="TextureRect" parent="MainSplit/ShowcasePanel/ShowcaseLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 300)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ShowcaseName" type="Label" parent="MainSplit/ShowcasePanel/ShowcaseLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.95, 0.92, 0.82, 1)
+text = "??"
+horizontal_alignment = 1
+
+[node name="ShowcaseElo" type="Label" parent="MainSplit/ShowcasePanel/ShowcaseLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.75, 0.72, 0.65, 1)
+text = ""
+horizontal_alignment = 1
+
+[node name="ShowcaseStats" type="Label" parent="MainSplit/ShowcasePanel/ShowcaseLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.72, 0.82, 0.62, 1)
+text = "HP: ??"
+horizontal_alignment = 1
+
+[node name="ShowcasePassive" type="Label" parent="MainSplit/ShowcasePanel/ShowcaseLayout"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
-text = ""
+theme_override_colors/font_color = Color(0.4, 0.75, 0.45, 1)
+text = "Select a fighter to view details."
 horizontal_alignment = 1
+autowrap_mode = 2
 
-[node name="FighterPassiveLabel" type="Label" parent="InfoBox/InfoLayout"]
+[node name="Spacer" type="Control" parent="MainSplit/ShowcasePanel/ShowcaseLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ConfirmBtn" type="Button" parent="MainSplit/ShowcasePanel/ShowcaseLayout"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.4, 0.75, 0.45, 1)
-text = ""
-horizontal_alignment = 1
-
-[node name="ConfirmBtn" type="Button" parent="."]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -120.0
-offset_top = -52.0
-offset_right = 120.0
-offset_bottom = -8.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_font_sizes/font_size = 22
+custom_minimum_size = Vector2(0, 52)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
 text = "FIGHT!"

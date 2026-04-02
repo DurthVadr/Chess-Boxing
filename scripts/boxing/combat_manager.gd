@@ -2,8 +2,7 @@ class_name CombatManager
 extends RefCounted
 
 ## Resolves combat actions between player and opponent.
-## Uses sequential QTE-based resolution (v0.3).
-
+## Supports reel-based 3-action turns with critical hit (match-3).
 
 var actions: Dictionary  # ActionType -> BoxingAction
 
@@ -11,12 +10,165 @@ func _init() -> void:
 	actions = BoxingAction.create_all()
 
 
-## Resolve a single attack action with a QTE modifier.
-## attacker_action: the attack being thrown (JAB, CROSS, UPPERCUT)
-## qte_result: offensive → "perfect"/"good"/"partial"/"critical"/"normal"/"miss"
-##             defensive → "perfect_defense"/"failed_defense"
-## is_player_attacking: true = player attacks opponent, false = opponent attacks player
-## Returns: { damage: int, dodged: bool, action_name: String, messages: Array }
+## Resolve a critical hit (triple match on reels). Bypasses QTE — auto-perfect.
+## Returns { damage: int, action_name: String, messages: Array }
+func resolve_critical_hit(
+	action_type: BoxingAction.ActionType,
+	player_stats: Dictionary,
+	opponent_stats: Dictionary,
+) -> Dictionary:
+	var atk_act: BoxingAction = actions[action_type]
+	var multiplier := ReelSystem.get_critical_multiplier()
+
+	var base_damage := _calculate_attack_damage(atk_act, player_stats, true)
+	var damage := int(float(base_damage) * multiplier)
+
+	# Blood Sacrifice stacks
+	if GameManager.blood_sacrifice_stacks > 0:
+		damage += GameManager.blood_sacrifice_stacks
+
+	# Jab upgrade bonus
+	if action_type == BoxingAction.ActionType.JAB:
+		damage += GameManager.get_jab_damage_bonus()
+
+	var name_upper := atk_act.name.to_upper()
+	return {
+		"damage": maxi(1, damage),
+		"action_name": atk_act.name.to_lower(),
+		"messages": [
+			"[color=gold]★ TRIPLE %s! CRITICAL HIT! ★[/color]" % name_upper,
+			"[color=gold]%s deals %d damage! (x%s)[/color]" % [atk_act.name, maxi(1, damage), str(multiplier)],
+		],
+	}
+
+
+## Resolve player attack: puzzle determines hit, QTE determines bonus.
+## puzzle_solved: true = punch lands, false = miss
+## qte_result: "perfect"/"good"/"partial"/"critical"/"normal"/"miss"
+## Returns: { damage: int, action_name: String, messages: Array }
+func resolve_player_attack(
+	attack_action: BoxingAction.ActionType,
+	puzzle_solved: bool,
+	qte_result: String,
+	player_stats: Dictionary,
+) -> Dictionary:
+	var atk_act: BoxingAction = actions[attack_action]
+	var result := {
+		"damage": 0,
+		"action_name": atk_act.name.to_lower(),
+		"messages": [],
+	}
+
+	if not puzzle_solved:
+		result.messages.append("[color=gray]%s misses! (puzzle failed)[/color]" % atk_act.name)
+		return result
+
+	# Base damage
+	var damage := _calculate_attack_damage(atk_act, player_stats, true)
+	damage = int(float(damage) * 1.35)
+
+	# QTE bonus modifier
+	match attack_action:
+		BoxingAction.ActionType.JAB:
+			match qte_result:
+				"perfect":
+					damage = int(float(damage) * 1.5)
+					result.messages.append("[color=gold]PERFECT JAB! x1.5![/color]")
+				"partial":
+					damage = int(float(damage) * 1.2)
+					result.messages.append("[color=yellow]Good jab! x1.2[/color]")
+				_:
+					pass  # base damage
+
+		BoxingAction.ActionType.CROSS:
+			match qte_result:
+				"perfect":
+					damage = int(float(damage) * 1.6)
+					result.messages.append("[color=gold]PERFECT CROSS! x1.6![/color]")
+				"good":
+					damage = int(float(damage) * 1.35)
+					result.messages.append("[color=yellow]Great cross! x1.35[/color]")
+				"partial":
+					damage = int(float(damage) * 1.1)
+					result.messages.append("[color=yellow]Cross connects. x1.1[/color]")
+				_:
+					damage = int(float(damage) * 0.8)
+					result.messages.append("Weak cross...")
+
+		BoxingAction.ActionType.UPPERCUT:
+			match qte_result:
+				"critical":
+					damage = int(float(damage) * 1.75)
+					result.messages.append("[color=gold]CRITICAL UPPERCUT! x1.75![/color]")
+				"normal":
+					damage = int(float(damage) * 0.5)
+					result.messages.append("Uppercut glances... x0.5")
+				_:
+					damage = int(float(damage) * 0.3)
+					result.messages.append("Uppercut weak...")
+
+	# Tactic: guaranteed hit
+	if player_stats.get("tactic_guaranteed_hit", false) and damage > 0:
+		result.messages.append("[color=gold]Sacrifice! Guaranteed hit![/color]")
+
+	# Blood Sacrifice stacks
+	if GameManager.blood_sacrifice_stacks > 0 and damage > 0:
+		damage += GameManager.blood_sacrifice_stacks
+
+	# Jab upgrade bonus
+	if attack_action == BoxingAction.ActionType.JAB:
+		damage += GameManager.get_jab_damage_bonus()
+
+	# Fighter-specific solved puzzle bonus damage
+	damage += int(player_stats.get("solve_bonus_damage", 0))
+
+	result.damage = maxi(1, damage)
+	result.messages.append("%s deals %d!" % [atk_act.name, result.damage])
+	return result
+
+
+## Resolve opponent attack with timing-based defense.
+## damage_multiplier: 0.0 (perfect block) to 1.0 (no block) from QTETimingDefense.
+## Returns: { damage: int, damage_multiplier: float, action_name: String, messages: Array }
+func resolve_opponent_attack(
+	attack_action: BoxingAction.ActionType,
+	damage_multiplier: float,
+	opponent_stats: Dictionary,
+	player_stats: Dictionary,
+) -> Dictionary:
+	var atk_act: BoxingAction = actions[attack_action]
+	var result := {
+		"damage": 0,
+		"damage_multiplier": damage_multiplier,
+		"action_name": atk_act.name.to_lower(),
+		"messages": [],
+	}
+
+	var raw_damage := _calculate_attack_damage(atk_act, opponent_stats, false)
+
+	# Apply block multiplier
+	var damage := int(float(raw_damage) * damage_multiplier)
+
+	# Perk: damage reduction (heat-scaled)
+	var dmg_red := int(GameManager.get_perk_scaled_value("damage_reduction", 0.0))
+	if dmg_red > 0 and damage > 0:
+		damage = maxi(0, damage - dmg_red)
+
+	result.damage = maxi(0, damage)
+
+	if damage_multiplier <= 0.05:
+		result.messages.append("[color=cyan]PERFECT BLOCK! No damage![/color]")
+	elif damage_multiplier <= 0.35:
+		result.messages.append("[color=#6eaadc]Solid block! %s deals only %d.[/color]" % [atk_act.name, result.damage])
+	elif damage_multiplier <= 0.65:
+		result.messages.append("Partial block. %s deals %d." % [atk_act.name, result.damage])
+	elif result.damage > 0:
+		result.messages.append("[color=#d96050]%s breaks through for %d![/color]" % [atk_act.name, result.damage])
+
+	return result
+
+
+## Legacy: resolve a single action (kept for critical hit opponent counter-attacks).
 func resolve_single_action(
 	attacker_action: BoxingAction.ActionType,
 	_defender_action: BoxingAction.ActionType,
@@ -25,101 +177,14 @@ func resolve_single_action(
 	player_stats: Dictionary,
 	opponent_stats: Dictionary,
 ) -> Dictionary:
-	var atk_act: BoxingAction = actions[attacker_action]
-
-	var result := {
-		"damage": 0,
-		"dodged": false,
-		"action_name": atk_act.name.to_lower(),
-		"messages": [],
-	}
-
-	# --- Calculate base damage ---
-	var stats := player_stats if is_player_attacking else opponent_stats
-	var raw_damage := _calculate_attack_damage(atk_act, stats, is_player_attacking)
-	var damage := raw_damage
-
-	# --- Offensive QTE (player attacking) ---
 	if is_player_attacking:
-		match attacker_action:
-			BoxingAction.ActionType.JAB:
-				# Jab: slow/easy QTE, reliable damage
-				match qte_result:
-					"perfect":
-						damage = int(float(damage) * 1.5)
-						result.messages.append("[color=gold]PERFECT JAB! x1.5![/color]")
-					"partial":
-						damage = int(float(damage) * 1.2)
-						result.messages.append("[color=yellow]Good jab! x1.2[/color]")
-					_:
-						pass  # miss = base damage (jab always connects)
-
-			BoxingAction.ActionType.CROSS:
-				# Cross: gradual curve with 4 tiers
-				match qte_result:
-					"perfect":
-						damage = int(float(damage) * 1.6)
-						result.messages.append("[color=gold]PERFECT CROSS! x1.6![/color]")
-					"good":
-						damage = int(float(damage) * 1.35)
-						result.messages.append("[color=yellow]Great cross! x1.35[/color]")
-					"partial":
-						damage = int(float(damage) * 1.1)
-						result.messages.append("[color=yellow]Cross connects. x1.1[/color]")
-					_:
-						damage = int(float(damage) * 0.7)
-						result.messages.append("Weak cross...")
-
-			BoxingAction.ActionType.UPPERCUT:
-				# Uppercut: only critical hits hard, otherwise bad
-				match qte_result:
-					"critical":
-						damage = int(float(damage) * 1.75)
-						result.messages.append("[color=gold]CRITICAL UPPERCUT! x1.75![/color]")
-					"normal":
-						damage = int(float(damage) * 0.4)
-						result.messages.append("Uppercut glances... x0.4")
-					_:
-						damage = int(float(damage) * 0.2)
-						result.messages.append("Uppercut whiffs...")
-
-		# Tactic: guaranteed hit overrides
-		if player_stats.get("tactic_guaranteed_hit", false) and damage > 0:
-			result.messages.append("[color=gold]Sacrifice! Guaranteed hit![/color]")
-
-	# --- Defensive QTE (opponent attacking, player defends) ---
+		return resolve_player_attack(attacker_action, true, qte_result, player_stats)
 	else:
+		# Legacy defense path: map old QTE results to damage multiplier
+		var mult := 1.0
 		if qte_result == "perfect_defense":
-			result.damage = 0
-			result.dodged = true
-			result.messages.append("[color=cyan]PERFECT DEFENSE! No damage![/color]")
-			return result
-		else:
-			# failed_defense — take full damage
-			pass
-
-	# --- Perk: damage reduction (heat-scaled) — player defending only ---
-	if not is_player_attacking:
-		var dmg_red := int(GameManager.get_perk_scaled_value("damage_reduction", 0.0))
-		if dmg_red > 0 and damage > 0:
-			damage = maxi(1, damage - dmg_red)
-
-	# --- Blood Sacrifice stacks — player attacking only ---
-	if is_player_attacking and GameManager.blood_sacrifice_stacks > 0 and damage > 0:
-		damage += GameManager.blood_sacrifice_stacks
-
-	# --- Jab upgrade bonus ---
-	if is_player_attacking and attacker_action == BoxingAction.ActionType.JAB:
-		damage += GameManager.get_jab_damage_bonus()
-
-	result.damage = maxi(0, damage)
-	if result.damage > 0:
-		if is_player_attacking:
-			result.messages.append("%s deals %d!" % [atk_act.name, result.damage])
-		else:
-			result.messages.append("Opp %s deals %d!" % [atk_act.name, result.damage])
-
-	return result
+			mult = 0.0
+		return resolve_opponent_attack(attacker_action, mult, opponent_stats, player_stats)
 
 
 ## Calculate attack damage. Perk effects scale with heat, not base damage.

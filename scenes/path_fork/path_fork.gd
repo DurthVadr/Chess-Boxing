@@ -37,12 +37,18 @@ func _create_path_card(opp: Dictionary) -> PanelContainer:
 
 	# Opponent portrait
 	var sprite_base: String = opp.get("sprite_base", "")
-	if sprite_base != "":
-		var portrait := TextureRect.new()
-		portrait.custom_minimum_size = Vector2(96, 96)
-		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var sheet_path: String = opp.get("sprite_sheet", "")
+	var portrait := TextureRect.new()
+	portrait.custom_minimum_size = Vector2(96, 96)
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	if sheet_path != "":
+		var sheet_portrait := AnimatedPortrait.portrait_from_sheet(sheet_path, 4, 2)
+		if sheet_portrait:
+			portrait.texture = sheet_portrait
+			vbox.add_child(portrait)
+	elif sprite_base != "":
 		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
 		portrait.texture = load(tex_path)
 		vbox.add_child(portrait)

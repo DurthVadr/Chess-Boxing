@@ -1,13 +1,15 @@
 extends Control
 
-## Run Results — Score, rating, stats, achievements, and perks
+## Run Results — Score, rating, stats, achievements, perks, ELO changes
 
 @onready var result_label: Label = %ResultLabel
 @onready var stats_container: VBoxContainer = %StatsContainer
 @onready var retry_btn: Button = %RetryBtn
+@onready var next_tournament_btn: Button = %NextTournamentBtn
 
 func _ready() -> void:
 	retry_btn.pressed.connect(_on_retry)
+	next_tournament_btn.pressed.connect(_on_next_tournament)
 
 	var won: bool = GameManager.stats.get("fights_won", 0) >= GameManager.total_opponents
 	var score_data: Dictionary = GameManager.run_score
@@ -19,11 +21,17 @@ func _ready() -> void:
 		AudioManager.play_victory()
 		Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.25), 0.3)
 		Juice.screen_shake(self, 8.0, 0.3)
+		# Show "Next Tournament" button only on victory
+		next_tournament_btn.visible = true
 	else:
 		result_label.text = "KNOCKED OUT"
 		result_label.add_theme_color_override("font_color", Color(0.8, 0.3, 0.3))
 		AudioManager.play_defeat()
 		Juice.screen_shake(self, 10.0, 0.35)
+		next_tournament_btn.visible = false
+
+	# Tournament & ELO header
+	_add_tournament_info(won)
 
 	# Rating
 	_add_rating(score_data)
@@ -34,6 +42,9 @@ func _ready() -> void:
 	# Score breakdown
 	_add_score_breakdown(score_data)
 
+	# ELO breakdown per fight
+	_add_elo_breakdown()
+
 	# Achievements
 	_add_achievements()
 
@@ -42,6 +53,29 @@ func _ready() -> void:
 
 	Juice.fade_in(self, 0.5)
 	Juice.scale_bounce(result_label, 1.2, 0.6)
+
+func _add_tournament_info(won: bool) -> void:
+	var tourney := GameManager.run_tournament_number
+	var elo := SaveManager.player_elo
+	var elo_delta := GameManager.get_run_elo_total()
+	var delta_text := ""
+	if elo_delta >= 0:
+		delta_text = "[color=#6edc6e]+%d[/color]" % elo_delta
+	else:
+		delta_text = "[color=#dc6e6e]%d[/color]" % elo_delta
+
+	var info := RichTextLabel.new()
+	info.bbcode_enabled = true
+	info.fit_content = true
+	info.scroll_active = false
+	info.custom_minimum_size = Vector2(0, 30)
+	info.text = "[center]TOURNAMENT %d  |  ELO: %d (%s)[/center]" % [tourney, elo, delta_text]
+	info.add_theme_font_size_override("normal_font_size", 18)
+	stats_container.add_child(info)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 4)
+	stats_container.add_child(spacer)
 
 func _add_rating(score_data: Dictionary) -> void:
 	var rating: String = score_data.get("rating", "F")
@@ -134,6 +168,36 @@ func _add_score_breakdown(score_data: Dictionary) -> void:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		stats_container.add_child(label)
 
+func _add_elo_breakdown() -> void:
+	if GameManager.run_elo_deltas.is_empty():
+		return
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 8)
+	stats_container.add_child(spacer)
+
+	var header := Label.new()
+	header.text = "ELO Changes"
+	header.add_theme_font_size_override("font_size", 14)
+	header.add_theme_color_override("font_color", Color(0.7, 0.68, 0.6))
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats_container.add_child(header)
+
+	for entry in GameManager.run_elo_deltas:
+		var opp_name: String = entry.get("opponent", "?")
+		var delta: int = entry.get("delta", 0)
+		var won: bool = entry.get("won", false)
+		var result_text := "W" if won else "L"
+		var delta_str := "+%d" % delta if delta >= 0 else "%d" % delta
+		var color := Color(0.43, 0.86, 0.43) if won else Color(0.86, 0.43, 0.43)
+
+		var label := Label.new()
+		label.text = "  %s [%s] %s" % [opp_name, result_text, delta_str]
+		label.add_theme_font_size_override("font_size", 13)
+		label.add_theme_color_override("font_color", color)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		stats_container.add_child(label)
+
 func _add_achievements() -> void:
 	if GameManager.run_achievements.is_empty():
 		return
@@ -184,3 +248,9 @@ func _add_perks() -> void:
 func _on_retry() -> void:
 	AudioManager.play_button_click()
 	GameManager.change_phase(GameManager.GamePhase.MENU)
+
+func _on_next_tournament() -> void:
+	AudioManager.play_confirm()
+	SaveManager.advance_tournament()
+	# Go straight to fighter select for the next tournament
+	GameManager.change_phase(GameManager.GamePhase.FIGHTER_SELECT)

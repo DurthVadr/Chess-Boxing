@@ -63,6 +63,27 @@ func set_intensity(value: float) -> void:
 		for key in DEFAULTS:
 			mat.set_shader_parameter(key, DEFAULTS[key] * _intensity)
 
+## Briefly spike CRT aberration + scanlines for a punch impact feel.
+func punch_impact(strength: float = 1.0) -> void:
+	if not _crt_rect or not _crt_rect.material:
+		return
+	var mat: ShaderMaterial = _crt_rect.material
+	var ab_peak := 3.5 * strength
+	var scan_peak := 0.35 * strength
+	mat.set_shader_parameter("aberration_amount", ab_peak)
+	mat.set_shader_parameter("scanline_intensity", scan_peak)
+	var tween := _crt_rect.create_tween()
+	tween.set_parallel(true)
+	tween.tween_method(
+		func(v: float) -> void: mat.set_shader_parameter("aberration_amount", v),
+		ab_peak, DEFAULTS["aberration_amount"] * _intensity, 0.25
+	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	tween.tween_method(
+		func(v: float) -> void: mat.set_shader_parameter("scanline_intensity", v),
+		scan_peak, DEFAULTS["scanline_intensity"] * _intensity, 0.3
+	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+
+
 func _setup_particles() -> void:
 	var shader := load(PARTICLE_SHADER_PATH) as Shader
 	if shader == null:

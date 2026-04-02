@@ -1,9 +1,8 @@
 extends Control
 
-## Move Upgrade — Shown after winning a fight.
-## Fight 1: Choose "Upgrade Jab" or "Unlock Cross"
-## Fight 2: Unlock Uppercut + choose 2 of 3 to equip
-## Fight 3+: Skip straight to perk draft
+## Move Upgrade — Now a Symbol Draft phase.
+## After winning a fight, player drafts action symbols to add to their reels.
+## Each draft offers a choice of symbols; player picks one and assigns it to a reel.
 
 @onready var title_label: Label = %TitleLabel
 @onready var subtitle_label: Label = %SubtitleLabel
@@ -17,10 +16,14 @@ const CARD_BORDER := Color(0.35, 0.30, 0.50)
 const CARD_BORDER_SELECTED := Color(0.92, 0.80, 0.28)
 
 var _options: Dictionary = {}
-var _selected_choice: String = ""
-var _equip_selection: Array = []  # For equip_select phase
+var _picks_remaining: int = 0
+var _selected_symbol: BoxingAction.ActionType = BoxingAction.ActionType.JAB
+var _selected_reel: int = -1
+var _has_symbol_selected: bool = false
 var _card_panels: Array = []
 var _card_styles: Array = []
+var _reel_buttons: Array = []
+var _reel_styles: Array = []
 
 func _ready() -> void:
 	confirm_btn.pressed.connect(_on_confirm)
@@ -28,65 +31,56 @@ func _ready() -> void:
 
 	_options = GameManager.get_move_upgrade_options()
 
-	match _options.get("type", "none"):
-		"choose_unlock":
-			_build_unlock_choice()
-		"equip_select":
-			_build_equip_select()
-		_:
-			# No upgrades — skip to perk draft
-			_proceed()
-			return
+	if _options.get("type", "none") == "symbol_draft":
+		_picks_remaining = _options.get("picks", 2)
+		_build_symbol_draft()
+	else:
+		_proceed()
+		return
 
 	Juice.fade_in(self, 0.4)
 	Juice.scale_bounce(title_label, 1.1, 0.5)
 
 
-func _build_unlock_choice() -> void:
-	title_label.text = "MOVE UPGRADE"
-	subtitle_label.text = "Choose your reward"
+func _build_symbol_draft() -> void:
+	title_label.text = "SYMBOL DRAFT"
+	subtitle_label.text = "Pick a symbol to add to a reel (%d remaining)" % _picks_remaining
 
-	# Option 1: Upgrade Jab
-	_add_choice_card(
-		"upgrade_jab",
-		"UPGRADE JAB",
-		"Jab deals +3 damage\nMore reliable, more punishing",
-		Color(0.52, 0.22, 0.18),
-	)
+	_clear_cards()
 
-	# Option 2: Unlock Cross
-	_add_choice_card(
-		"unlock_cross",
-		"UNLOCK CROSS",
-		"New move: Cross\nGradual timing, medium damage",
-		Color(0.58, 0.26, 0.16),
-	)
+	var pool: Array = _options.get("pool", [])
+	var all_actions := BoxingAction.create_all()
+
+	for symbol_type in pool:
+		var action: BoxingAction = all_actions[symbol_type]
+		_add_symbol_card(symbol_type, action)
+
+	# Reel selection buttons (below the cards)
+	_build_reel_selector()
+	_update_confirm()
 
 
-func _build_equip_select() -> void:
-	title_label.text = "UPPERCUT UNLOCKED!"
-	subtitle_label.text = "Equip 2 moves for your loadout"
-	Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.2), 0.3)
+func _clear_cards() -> void:
+	for child in card_container.get_children():
+		child.queue_free()
+	_card_panels.clear()
+	_card_styles.clear()
+	_has_symbol_selected = false
+	_selected_reel = -1
 
-	# Unlock uppercut
-	GameManager.unlock_uppercut()
-
-	var all_moves := BoxingAction.create_all()
-	for move_type in GameManager.unlocked_moves:
-		var action: BoxingAction = all_moves[move_type]
-		var id := action.name.to_lower()
-		_add_equip_card(move_type, action)
-
-	# Also add uppercut
-	var uppercut: BoxingAction = all_moves[BoxingAction.ActionType.UPPERCUT]
-	_add_equip_card(BoxingAction.ActionType.UPPERCUT, uppercut)
-
-	_update_equip_confirm()
+	# Remove old reel selector if present
+	var old_selector := get_node_or_null("ReelSelector")
+	if old_selector:
+		old_selector.queue_free()
+	_reel_buttons.clear()
+	_reel_styles.clear()
 
 
-func _add_choice_card(choice_id: String, title: String, desc: String, accent: Color) -> void:
+func _add_symbol_card(symbol_type: BoxingAction.ActionType, action: BoxingAction) -> void:
+	var accent := ReelSystem.symbol_color(symbol_type)
+
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(240, 200)
+	panel.custom_minimum_size = Vector2(200, 200)
 
 	var style := StyleBoxFlat.new()
 	style.bg_color = CARD_BG
@@ -107,44 +101,56 @@ func _add_choice_card(choice_id: String, title: String, desc: String, accent: Co
 
 	var vbox := VBoxContainer.new()
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", 10)
 
+	# Symbol name
 	var title_lbl := Label.new()
-	title_lbl.text = title
-	title_lbl.add_theme_font_size_override("font_size", 22)
-	title_lbl.add_theme_color_override("font_color", accent.lightened(0.3))
+	title_lbl.text = action.name.to_upper()
+	title_lbl.add_theme_font_size_override("font_size", 24)
+	title_lbl.add_theme_color_override("font_color", ReelSystem.symbol_accent(symbol_type))
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title_lbl)
 
-	var accent_bar := ColorRect.new()
-	accent_bar.custom_minimum_size = Vector2(80, 3)
-	accent_bar.color = accent
-	accent_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	vbox.add_child(accent_bar)
+	# Accent bar
+	var bar := ColorRect.new()
+	bar.custom_minimum_size = Vector2(80, 3)
+	bar.color = accent
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vbox.add_child(bar)
 
+	# Description
 	var desc_lbl := Label.new()
-	desc_lbl.text = desc
-	desc_lbl.add_theme_font_size_override("font_size", 14)
-	desc_lbl.add_theme_color_override("font_color", Color(0.75, 0.72, 0.65))
+	desc_lbl.text = action.description
+	desc_lbl.add_theme_font_size_override("font_size", 13)
+	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.68, 0.6))
 	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(desc_lbl)
 
+	# Damage
+	var dmg_lbl := Label.new()
+	dmg_lbl.text = "DMG: %d" % action.damage
+	dmg_lbl.add_theme_font_size_override("font_size", 14)
+	dmg_lbl.add_theme_color_override("font_color", GOLD)
+	dmg_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(dmg_lbl)
+
 	panel.add_child(vbox)
 
-	# Click handling via button overlay
+	# Click overlay
+	var idx := _card_panels.size()
 	var btn := Button.new()
 	btn.flat = true
 	btn.anchors_preset = Control.PRESET_FULL_RECT
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	btn.pressed.connect(_on_choice_selected.bind(choice_id, _card_panels.size()))
+	btn.pressed.connect(_on_symbol_selected.bind(symbol_type, idx))
 	btn.mouse_entered.connect(func():
 		AudioManager.play_button_hover()
-		if _selected_choice != choice_id:
+		if not _has_symbol_selected or _selected_symbol != symbol_type:
 			style.border_color = accent.lightened(0.2)
 	)
 	btn.mouse_exited.connect(func():
-		if _selected_choice != choice_id:
+		if not _has_symbol_selected or _selected_symbol != symbol_type:
 			style.border_color = CARD_BORDER
 	)
 	panel.add_child(btn)
@@ -154,85 +160,94 @@ func _add_choice_card(choice_id: String, title: String, desc: String, accent: Co
 	card_container.add_child(panel)
 
 
-func _add_equip_card(move_type: BoxingAction.ActionType, action: BoxingAction) -> void:
-	var accent := Color(0.5, 0.4, 0.6)
-	match action.name:
-		"Jab": accent = Color(0.52, 0.22, 0.18)
-		"Cross": accent = Color(0.58, 0.26, 0.16)
-		"Uppercut": accent = Color(0.62, 0.26, 0.14)
+func _build_reel_selector() -> void:
+	var selector := HBoxContainer.new()
+	selector.name = "ReelSelector"
+	selector.alignment = BoxContainer.ALIGNMENT_CENTER
+	selector.add_theme_constant_override("separation", 16)
 
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(200, 180)
+	# Position it below the card container
+	var parent := card_container.get_parent()
+	var idx := card_container.get_index() + 1
+	parent.add_child(selector)
+	parent.move_child(selector, idx)
 
-	var style := StyleBoxFlat.new()
-	style.bg_color = CARD_BG
-	style.corner_radius_top_left = 12
-	style.corner_radius_top_right = 12
-	style.corner_radius_bottom_left = 12
-	style.corner_radius_bottom_right = 12
-	style.border_width_left = 3
-	style.border_width_right = 3
-	style.border_width_top = 3
-	style.border_width_bottom = 3
-	style.border_color = CARD_BORDER
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 16
-	style.content_margin_bottom = 16
-	panel.add_theme_stylebox_override("panel", style)
+	var header := Label.new()
+	header.text = "ADD TO REEL:"
+	header.add_theme_font_size_override("font_size", 14)
+	header.add_theme_color_override("font_color", Color(0.65, 0.60, 0.55))
+	selector.add_child(header)
 
-	var vbox := VBoxContainer.new()
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override("separation", 8)
+	for i in 3:
+		var reel: Array = GameManager.reel_symbols[i]
+		var dist := ReelSystem.get_reel_distribution(reel)
 
-	var title_lbl := Label.new()
-	title_lbl.text = action.name.to_upper()
-	title_lbl.add_theme_font_size_override("font_size", 22)
-	title_lbl.add_theme_color_override("font_color", accent.lightened(0.3))
-	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title_lbl)
+		var reel_panel := PanelContainer.new()
+		reel_panel.custom_minimum_size = Vector2(130, 80)
 
-	var desc_lbl := Label.new()
-	desc_lbl.text = action.description
-	desc_lbl.add_theme_font_size_override("font_size", 13)
-	desc_lbl.add_theme_color_override("font_color", Color(0.7, 0.68, 0.6))
-	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-	vbox.add_child(desc_lbl)
+		var style := StyleBoxFlat.new()
+		style.bg_color = CARD_BG
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 2
+		style.border_color = CARD_BORDER
+		style.content_margin_left = 8
+		style.content_margin_right = 8
+		style.content_margin_top = 6
+		style.content_margin_bottom = 6
+		reel_panel.add_theme_stylebox_override("panel", style)
 
-	var dmg_lbl := Label.new()
-	var dmg_text := "DMG: %d" % action.damage
-	if move_type == BoxingAction.ActionType.JAB and GameManager.jab_upgraded:
-		dmg_text = "DMG: %d (+3)" % (action.damage + 3)
-	dmg_lbl.text = dmg_text
-	dmg_lbl.add_theme_font_size_override("font_size", 14)
-	dmg_lbl.add_theme_color_override("font_color", Color(0.85, 0.75, 0.35))
-	dmg_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(dmg_lbl)
+		var vbox := VBoxContainer.new()
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		vbox.add_theme_constant_override("separation", 2)
 
-	panel.add_child(vbox)
+		var title_lbl := Label.new()
+		title_lbl.text = "REEL %d" % (i + 1)
+		title_lbl.add_theme_font_size_override("font_size", 13)
+		title_lbl.add_theme_color_override("font_color", Color(0.75, 0.72, 0.65))
+		title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(title_lbl)
 
-	var idx := _card_panels.size()
-	var btn := Button.new()
-	btn.flat = true
-	btn.anchors_preset = Control.PRESET_FULL_RECT
-	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	btn.pressed.connect(_on_equip_toggled.bind(move_type, idx))
-	btn.mouse_entered.connect(func():
-		AudioManager.play_button_hover()
-	)
-	panel.add_child(btn)
+		# Show current symbol distribution
+		var dist_text := ""
+		var all_actions := BoxingAction.create_all()
+		for action_type in dist:
+			var act: BoxingAction = all_actions[action_type]
+			dist_text += "%s x%d  " % [act.name, dist[action_type]]
+		var dist_lbl := Label.new()
+		dist_lbl.text = dist_text.strip_edges()
+		dist_lbl.add_theme_font_size_override("font_size", 11)
+		dist_lbl.add_theme_color_override("font_color", Color(0.55, 0.52, 0.48))
+		dist_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		dist_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+		vbox.add_child(dist_lbl)
 
-	panel.set_meta("move_type", move_type)
-	_card_panels.append(panel)
-	_card_styles.append(style)
-	card_container.add_child(panel)
+		reel_panel.add_child(vbox)
+
+		var btn := Button.new()
+		btn.flat = true
+		btn.anchors_preset = Control.PRESET_FULL_RECT
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		btn.pressed.connect(_on_reel_selected.bind(i))
+		btn.mouse_entered.connect(func():
+			AudioManager.play_button_hover()
+		)
+		reel_panel.add_child(btn)
+
+		selector.add_child(reel_panel)
+		_reel_buttons.append(reel_panel)
+		_reel_styles.append(style)
 
 
-func _on_choice_selected(choice_id: String, index: int) -> void:
+func _on_symbol_selected(symbol_type: BoxingAction.ActionType, index: int) -> void:
 	AudioManager.play_button_click()
-	_selected_choice = choice_id
-	confirm_btn.disabled = false
+	_selected_symbol = symbol_type
+	_has_symbol_selected = true
 
 	for i in _card_panels.size():
 		if i == index:
@@ -243,51 +258,48 @@ func _on_choice_selected(choice_id: String, index: int) -> void:
 			_card_styles[i].border_color = CARD_BORDER
 			_card_styles[i].bg_color = CARD_BG
 
+	_update_confirm()
 
-func _on_equip_toggled(move_type: BoxingAction.ActionType, index: int) -> void:
+
+func _on_reel_selected(reel_index: int) -> void:
 	AudioManager.play_button_click()
+	_selected_reel = reel_index
 
-	if move_type in _equip_selection:
-		_equip_selection.erase(move_type)
-	else:
-		if _equip_selection.size() >= 2:
-			# Remove oldest selection
-			_equip_selection.pop_front()
-		_equip_selection.append(move_type)
-
-	# Update card visuals
-	for i in _card_panels.size():
-		var mt = _card_panels[i].get_meta("move_type")
-		if mt in _equip_selection:
-			_card_styles[i].border_color = CARD_BORDER_SELECTED
-			_card_styles[i].bg_color = CARD_SELECTED
+	for i in _reel_styles.size():
+		if i == reel_index:
+			_reel_styles[i].border_color = CARD_BORDER_SELECTED
+			_reel_styles[i].bg_color = CARD_SELECTED
+			Juice.scale_bounce(_reel_buttons[i], 1.05, 0.15)
 		else:
-			_card_styles[i].border_color = CARD_BORDER
-			_card_styles[i].bg_color = CARD_BG
+			_reel_styles[i].border_color = CARD_BORDER
+			_reel_styles[i].bg_color = CARD_BG
 
-	Juice.scale_bounce(_card_panels[index], 1.05, 0.2)
-	_update_equip_confirm()
+	_update_confirm()
 
 
-func _update_equip_confirm() -> void:
-	confirm_btn.disabled = _equip_selection.size() != 2
-	if _equip_selection.size() == 2:
-		confirm_btn.text = "CONFIRM LOADOUT"
+func _update_confirm() -> void:
+	var ready := _has_symbol_selected and _selected_reel >= 0
+	confirm_btn.disabled = not ready
+	if ready:
+		var sym_name := ReelSystem.symbol_name(_selected_symbol)
+		confirm_btn.text = "ADD %s TO REEL %d" % [sym_name.to_upper(), _selected_reel + 1]
 	else:
-		confirm_btn.text = "Select 2 moves (%d/2)" % _equip_selection.size()
+		confirm_btn.text = "Select symbol & reel"
 
 
 func _on_confirm() -> void:
 	AudioManager.play_confirm()
 	Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.2), 0.2)
 
-	match _options.get("type", "none"):
-		"choose_unlock":
-			GameManager.apply_move_choice(_selected_choice)
-		"equip_select":
-			GameManager.set_equipped_moves(_equip_selection)
+	# Add the symbol to the chosen reel
+	GameManager.add_reel_symbol(_selected_reel, _selected_symbol)
 
-	_proceed()
+	_picks_remaining -= 1
+	if _picks_remaining > 0:
+		# Another pick
+		_build_symbol_draft()
+	else:
+		_proceed()
 
 
 func _proceed() -> void:

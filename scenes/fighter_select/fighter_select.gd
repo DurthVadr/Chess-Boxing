@@ -1,16 +1,34 @@
 extends Control
 
-## Fighter Select — Card-style character picker with portrait, name panel, and locked state
+## Fighter Select — Carousel with centered focus card + right detail panel.
+## Left/Right (or A/D) cycles cards. Focused card tweens to center of carousel area.
 
-@onready var fighter_container: HBoxContainer = %FighterContainer
+signal fighter_focused(fighter: Dictionary)
+
+@onready var fighter_row: HBoxContainer = %FighterRow
 @onready var confirm_btn: Button = %ConfirmBtn
-@onready var fighter_name_label: Label = %FighterNameLabel
-@onready var fighter_stats_label: Label = %FighterStatsLabel
-@onready var fighter_passive_label: Label = %FighterPassiveLabel
+@onready var elo_label: Label = %EloLabel
+@onready var showcase_portrait: TextureRect = %ShowcasePortrait
+@onready var showcase_name: Label = %ShowcaseName
+@onready var showcase_elo: Label = %ShowcaseElo
+@onready var showcase_stats: Label = %ShowcaseStats
+@onready var showcase_passive: Label = %ShowcasePassive
+@onready var blur_overlay: ColorRect = %BlurOverlay
 
 var selected_fighter: Dictionary = {}
-var fighter_cards: Array[PanelContainer] = []
-var fighter_card_styles: Array[StyleBoxFlat] = []
+var _cards: Array[PanelContainer] = []
+var _fighters: Array[Dictionary] = []
+var _focused_index := 0
+var _is_animating := false
+var _carousel_area: Control
+
+const FOCUS_SCALE := Vector2(1.15, 1.15)
+const UNFOCUS_SCALE := Vector2(0.85, 0.85)
+const FOCUS_ALPHA := 1.0
+const UNFOCUS_ALPHA := 0.45
+const CARD_W := 160.0
+const CARD_H := 220.0
+const CARD_GAP := 20.0
 
 const CARD_COLORS := {
 	"rookie":      Color(0.25, 0.45, 0.30),
@@ -23,136 +41,271 @@ const CARD_COLORS := {
 func _ready() -> void:
 	confirm_btn.pressed.connect(_on_confirm)
 	confirm_btn.disabled = true
+	elo_label.text = "Your ELO: %d" % SaveManager.player_elo
+	fighter_focused.connect(_update_detail_panel)
+	_carousel_area = fighter_row.get_parent()
+	_setup_blur_overlay()
 	_build_fighter_cards()
-	Juice.fade_in(self, 0.4)
+	call_deferred("_focus_initial_card")
+	Juice.fade_in(self, 0.3)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _is_animating:
+		return
+	if event.is_action_pressed("ui_left"):
+		_move_focus(-1)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ui_right"):
+		_move_focus(1)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_A:
+			_move_focus(-1)
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_D:
+			_move_focus(1)
+			get_viewport().set_input_as_handled()
+
+func _setup_blur_overlay() -> void:
+	var mat := ShaderMaterial.new()
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_linear_mipmap;
+uniform float lod: hint_range(0.0, 5.0) = 2.0;
+void fragment() {
+	COLOR = textureLod(screen_texture, SCREEN_UV, lod);
+}
+"""
+	mat.shader = shader
+	blur_overlay.material = mat
+
+# --- Card building (compact: portrait + name only) ---
 
 func _build_fighter_cards() -> void:
+	for child in fighter_row.get_children():
+		child.queue_free()
+	_cards.clear()
+	_fighters.clear()
+
 	for fighter in GameManager.all_fighters:
-		var fighter_id: String = fighter.get("id", "")
-		var is_unlocked := SaveManager.is_fighter_unlocked(fighter_id)
+		var card := _make_fighter_card(fighter)
+		fighter_row.add_child(card)
+		_cards.append(card)
+		_fighters.append(fighter)
 
-		# ── Card frame ───────────────────────────────────────────────────
-		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(200, 300)
+func _make_fighter_card(fighter: Dictionary) -> PanelContainer:
+	var fighter_id: String = fighter.get("id", "")
+	var required_elo := SaveManager.get_fighter_required_elo(fighter_id)
+	var unlocked := SaveManager.is_fighter_elo_unlocked(fighter_id)
+	if unlocked and not SaveManager.is_fighter_unlocked(fighter_id):
+		SaveManager.unlock_fighter(fighter_id)
 
-		var card_bg := StyleBoxFlat.new()
-		card_bg.corner_radius_top_left = 12
-		card_bg.corner_radius_top_right = 12
-		card_bg.corner_radius_bottom_left = 12
-		card_bg.corner_radius_bottom_right = 12
-		card_bg.border_width_left = 3
-		card_bg.border_width_right = 3
-		card_bg.border_width_top = 3
-		card_bg.border_width_bottom = 3
-		if is_unlocked:
-			card_bg.bg_color = CARD_COLORS.get(fighter_id, Color(0.2, 0.2, 0.22))
-			card_bg.border_color = Color(0.9, 0.78, 0.3, 0)
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(CARD_W, CARD_H)
+	card.pivot_offset = Vector2(CARD_W, CARD_H) * 0.5
+
+	var bg := StyleBoxFlat.new()
+	bg.corner_radius_top_left = 10
+	bg.corner_radius_top_right = 10
+	bg.corner_radius_bottom_left = 10
+	bg.corner_radius_bottom_right = 10
+	bg.border_width_left = 2
+	bg.border_width_right = 2
+	bg.border_width_top = 2
+	bg.border_width_bottom = 2
+	bg.bg_color = CARD_COLORS.get(fighter_id, Color(0.24, 0.24, 0.24)) if unlocked else Color(0.20, 0.20, 0.20)
+	bg.border_color = Color(0.88, 0.78, 0.34, 0.2)
+	card.add_theme_stylebox_override("panel", bg)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	card.add_child(vbox)
+
+	# Small portrait
+	var portrait := TextureRect.new()
+	portrait.custom_minimum_size = Vector2(0, 160)
+	portrait.size_flags_horizontal = SIZE_EXPAND_FILL
+	portrait.size_flags_vertical = SIZE_EXPAND_FILL
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if unlocked:
+		var sprite_base: String = fighter.get("sprite_base", "")
+		if sprite_base != "":
+			var tex_path := "res://assets/sprites/fighters/%s_neutral.png" % sprite_base
+			if ResourceLoader.exists(tex_path):
+				portrait.texture = load(tex_path)
+	else:
+		portrait.modulate = Color(0.35, 0.35, 0.35, 1.0)
+	vbox.add_child(portrait)
+
+	# Name only
+	var name_label := Label.new()
+	name_label.text = fighter.get("name", "??") if unlocked else "??"
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_color_override("font_color", Color(0.95, 0.92, 0.82, 1))
+	vbox.add_child(name_label)
+
+	# Clickable overlay
+	var btn := Button.new()
+	btn.flat = true
+	btn.anchors_preset = PRESET_FULL_RECT
+	btn.mouse_default_cursor_shape = CURSOR_POINTING_HAND
+	btn.pressed.connect(_on_card_pressed.bind(fighter))
+	card.add_child(btn)
+
+	# Lock overlay
+	if not unlocked:
+		var lock_label := Label.new()
+		lock_label.text = "??"
+		lock_label.add_theme_font_size_override("font_size", 48)
+		lock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lock_label.anchors_preset = PRESET_FULL_RECT
+		lock_label.add_theme_color_override("font_color", Color(0.62, 0.60, 0.55, 0.85))
+		card.add_child(lock_label)
+
+	return card
+
+# --- Focus / centering ---
+
+func _focus_initial_card() -> void:
+	if _cards.is_empty():
+		return
+	_focused_index = 0
+	_layout_row()
+	_center_on_index(_focused_index, false)
+	_apply_focus_visuals(-1, _focused_index, false)
+	fighter_focused.emit(_fighters[_focused_index])
+
+func _move_focus(dir: int) -> void:
+	if _cards.is_empty():
+		return
+	var old := _focused_index
+	_focused_index = clampi(_focused_index + dir, 0, _cards.size() - 1)
+	if old == _focused_index:
+		return
+	_center_on_index(_focused_index, true)
+	_apply_focus_visuals(old, _focused_index, true)
+	fighter_focused.emit(_fighters[_focused_index])
+
+func _on_card_pressed(fighter: Dictionary) -> void:
+	var idx := _fighters.find(fighter)
+	if idx < 0:
+		return
+	var old := _focused_index
+	_focused_index = idx
+	_center_on_index(_focused_index, true)
+	_apply_focus_visuals(old, _focused_index, true)
+	fighter_focused.emit(fighter)
+
+func _layout_row() -> void:
+	# Manually position cards so we can freely tween the row's x offset.
+	var x := 0.0
+	for card in _cards:
+		card.position.x = x
+		card.position.y = 0.0
+		x += CARD_W + CARD_GAP
+	fighter_row.custom_minimum_size.x = x - CARD_GAP if _cards.size() > 0 else 0.0
+	fighter_row.size.x = fighter_row.custom_minimum_size.x
+
+func _center_on_index(index: int, animate: bool) -> void:
+	# Slide fighter_row so that _cards[index] sits at the horizontal center of _carousel_area.
+	var area_w := _carousel_area.size.x
+	var card_center_local := _cards[index].position.x + CARD_W * 0.5
+	var target_x := area_w * 0.5 - card_center_local
+
+	if not animate:
+		fighter_row.position.x = target_x
+		return
+
+	_is_animating = true
+	var tw := create_tween()
+	tw.tween_property(fighter_row, "position:x", target_x, 0.25) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.finished.connect(func() -> void: _is_animating = false)
+
+func _apply_focus_visuals(prev_idx: int, next_idx: int, animate: bool) -> void:
+	for i in _cards.size():
+		var card := _cards[i]
+		var focus := i == next_idx
+		var target_scale := FOCUS_SCALE if focus else UNFOCUS_SCALE
+		var target_alpha := FOCUS_ALPHA if focus else UNFOCUS_ALPHA
+		# Highlight border on focused card
+		var bg: StyleBoxFlat = card.get_theme_stylebox("panel")
+		if bg:
+			bg.border_color = Color(0.9, 0.78, 0.35, 0.9) if focus else Color(0.88, 0.78, 0.34, 0.2)
+		if animate:
+			var tw := create_tween()
+			tw.set_parallel(true)
+			tw.tween_property(card, "scale", target_scale, 0.2) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tw.tween_property(card, "modulate:a", target_alpha, 0.2) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		else:
-			card_bg.bg_color = Color(0.22, 0.22, 0.22)
-			card_bg.border_color = Color(0.4, 0.4, 0.4, 0)
-			card.modulate = Color(1.0, 1.0, 1.0, 0.55)
-		card.add_theme_stylebox_override("panel", card_bg)
+			card.scale = target_scale
+			card.modulate.a = target_alpha
 
-		var vbox := VBoxContainer.new()
-		vbox.add_theme_constant_override("separation", 0)
-		card.add_child(vbox)
+# --- Detail panel (right side) ---
 
-		# ── Top 60% — portrait area (180 px) ────────────────────────────
-		var portrait_area := Control.new()
-		portrait_area.custom_minimum_size = Vector2(200, 180)
-		portrait_area.size_flags_horizontal = Control.SIZE_FILL
-		portrait_area.clip_contents = true
-		vbox.add_child(portrait_area)
-
-		if is_unlocked:
-			var portrait := TextureRect.new()
-			portrait.anchors_preset = Control.PRESET_FULL_RECT
-			portrait.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-			portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			var sprite_base: String = fighter.get("sprite_base", "")
-			if sprite_base != "":
-				var tex_path := "res://assets/sprites/fighters/%s_neutral.png" % sprite_base
-				if ResourceLoader.exists(tex_path):
-					portrait.texture = load(tex_path)
-			portrait_area.add_child(portrait)
-		else:
-			var lock_lbl := Label.new()
-			lock_lbl.text = "🔒"
-			lock_lbl.add_theme_font_size_override("font_size", 72)
-			lock_lbl.anchors_preset = Control.PRESET_FULL_RECT
-			lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			lock_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			lock_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5, 0.8))
-			portrait_area.add_child(lock_lbl)
-
-		# ── Bottom 40% — name panel (fills remaining height) ────────────
-		var name_panel := PanelContainer.new()
-		name_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		var name_style := StyleBoxFlat.new()
-		name_style.bg_color = Color(0.04, 0.03, 0.07, 0.92)
-		name_style.content_margin_left = 8.0
-		name_style.content_margin_right = 8.0
-		name_style.content_margin_top = 10.0
-		name_style.content_margin_bottom = 10.0
-		name_panel.add_theme_stylebox_override("panel", name_style)
-		vbox.add_child(name_panel)
-
-		var name_lbl := Label.new()
-		name_lbl.text = fighter.get("name", "???")
-		name_lbl.add_theme_font_size_override("font_size", 17)
-		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_lbl.size_flags_horizontal = Control.SIZE_FILL
-		name_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		if is_unlocked:
-			name_lbl.add_theme_color_override("font_color", Color(0.97, 0.95, 0.88, 1))
-		else:
-			name_lbl.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55, 0.5))
-		name_panel.add_child(name_lbl)
-
-		# ── Invisible click/hover overlay ────────────────────────────────
-		var btn := Button.new()
-		btn.flat = true
-		btn.anchors_preset = Control.PRESET_FULL_RECT
-		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		if not is_unlocked:
-			btn.disabled = true
-		btn.pressed.connect(_on_fighter_selected.bind(fighter, card, card_bg))
-		btn.mouse_entered.connect(_on_card_hover_enter.bind(card_bg))
-		btn.mouse_exited.connect(_on_card_hover_exit.bind(card_bg))
-		card.add_child(btn)
-
-		fighter_container.add_child(card)
-		fighter_cards.append(card)
-		fighter_card_styles.append(card_bg)
-
-func _on_card_hover_enter(style: StyleBoxFlat) -> void:
-	AudioManager.play_button_hover()
-	if style.border_color.a < 0.9:
-		style.border_color = Color(0.9, 0.78, 0.3, 0.45)
-
-func _on_card_hover_exit(style: StyleBoxFlat) -> void:
-	if style.border_color.a < 0.9:
-		style.border_color = Color(0.9, 0.78, 0.3, 0)
-
-func _on_fighter_selected(fighter: Dictionary, card: PanelContainer, card_bg: StyleBoxFlat) -> void:
-	AudioManager.play_button_click()
+func _update_detail_panel(fighter: Dictionary) -> void:
 	selected_fighter = fighter
-	confirm_btn.disabled = false
+	var fighter_id: String = fighter.get("id", "")
+	var unlocked := SaveManager.is_fighter_elo_unlocked(fighter_id)
+	var required_elo := SaveManager.get_fighter_required_elo(fighter_id)
 
-	fighter_name_label.text = fighter.get("name", "???")
-	fighter_stats_label.text = "HP: %d" % fighter.get("hp", 0)
-	fighter_passive_label.text = fighter.get("passive_description", "No passive")
+	if unlocked:
+		var pattern_text := _pattern_text(fighter.get("attack_pattern", []))
+		var dmg_pct := int(round(float(fighter.get("damage_mod", 1.0)) * 100.0))
+		var regen := int(fighter.get("regen_per_turn", 0))
+		var solve_bonus := int(fighter.get("solve_bonus_damage", 0))
+		var puzzle_bonus := float(fighter.get("puzzle_time_bonus", 0.0))
+		var puzzle_penalty := float(fighter.get("puzzle_error_penalty", 2.0))
 
-	for style in fighter_card_styles:
-		style.border_color = Color(0.9, 0.78, 0.3, 0)
-	card_bg.border_color = Color(0.9, 0.78, 0.3, 1)
+		showcase_name.text = fighter.get("name", "???")
+		showcase_elo.text = "ELO Requirement: %d" % required_elo
+		showcase_stats.text = "HP: %d  |  DMG: %d%%  |  Regen: +%d  |  Solve: +%d" % [
+			fighter.get("hp", 0), dmg_pct, regen, solve_bonus
+		]
+		showcase_passive.text = "%s\nPattern: %s\nPuzzle: +%.1fs  |  Error: %.1fs" % [
+			fighter.get("passive_description", "No passive"), pattern_text,
+			puzzle_bonus, puzzle_penalty
+		]
+		var sprite_base: String = fighter.get("sprite_base", "")
+		if sprite_base != "":
+			var tex_path := "res://assets/sprites/fighters/%s_neutral.png" % sprite_base
+			if ResourceLoader.exists(tex_path):
+				showcase_portrait.texture = load(tex_path)
+			else:
+				showcase_portrait.texture = null
+		else:
+			showcase_portrait.texture = null
+	else:
+		showcase_name.text = "??"
+		showcase_elo.text = "Requires ELO %d  |  Your ELO: %d" % [required_elo, SaveManager.player_elo]
+		showcase_stats.text = "HP: ??  |  DMG: ??"
+		showcase_passive.text = "Locked. Reach required ELO in tournaments."
+		showcase_portrait.texture = null
 
-	Juice.scale_bounce(card, 1.08, 0.25)
+	confirm_btn.disabled = not unlocked
+
+func _pattern_text(pattern: Array) -> String:
+	if pattern.is_empty():
+		return "JAB"
+	var parts: Array[String] = []
+	for token in pattern:
+		var t := str(token).to_upper()
+		parts.append(t)
+	return "-".join(parts)
 
 func _on_confirm() -> void:
 	if selected_fighter.is_empty():
+		return
+	var fighter_id: String = selected_fighter.get("id", "")
+	if not SaveManager.is_fighter_elo_unlocked(fighter_id):
 		return
 	AudioManager.play_confirm()
 	GameManager.start_new_run(selected_fighter)

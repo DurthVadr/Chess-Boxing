@@ -1,11 +1,8 @@
 extends Control
 
-## Boxing Phase — Sequential QTE combat with heat-scaled perks.
-## Player selects 2 actions, then the turn executes step-by-step:
-##   Step 1: Player Action 1  (Offensive QTE)
-##   Step 2: Enemy Action 1   (Defensive QTE)
-##   Step 3: Player Action 2  (Offensive QTE)
-##   Step 4: Enemy Action 2   (Defensive QTE)
+## Boxing Phase — Integrated chess puzzles + boxing exchange.
+## Each player attack step is: mini puzzle -> attack QTE -> damage resolve.
+## Opponent defense remains timing-based per incoming punch.
 
 @onready var player_hp_bar: ProgressBar = %PlayerHPBar
 @onready var player_hp_label: Label = %PlayerHPLabel
@@ -17,11 +14,12 @@ extends Control
 @onready var action_container: GridContainer = %ActionContainer
 @onready var bonus_label: Label = %BonusLabel
 @onready var player_sprite: AnimatedPortrait = %PlayerSprite
-@onready var opponent_sprite: TextureRect = %OpponentSprite
+@onready var opponent_sprite: AnimatedPortrait = %OpponentSprite
 @onready var combo_label: Label = %ComboLabel
 @onready var action_phase_label: Label = %ActionPhaseLabel
 @onready var round_timer_label: Label = %RoundTimerLabel
-@onready var center_stage: Control = %CenterSpacer
+@onready var center_stage: Control = %CenterStage
+@onready var center_spacer: Control = %CenterSpacer
 
 var combat_mgr: CombatManager
 var opponent_ai: OpponentAI
@@ -31,9 +29,6 @@ var turn_count: int = 0
 var second_wind_used: bool = false
 var round_time_remaining: float = 180.0
 
-# 2-action selection state
-var action_selection_phase: int = 0
-var selected_action_1: BoxingAction.ActionType = BoxingAction.ActionType.JAB
 var opponent_next_actions: Array = []
 
 # Execution state
@@ -49,6 +44,12 @@ const ACTION_COLORS := {
 }
 
 const GOLD := Color(0.92, 0.80, 0.28)
+
+var _round_puzzle_solved: bool = false
+var _round_puzzle_mistakes: int = 0
+var _round_puzzle_solve_time: float = 0.0
+var _round_puzzle_time_limit: float = 0.0
+var _round_puzzle_attempts: int = 0
 
 func _process(delta: float) -> void:
 	if round_over:
@@ -66,12 +67,20 @@ func _ready() -> void:
 	opponent_ai.setup_telegraphs(GameManager.current_opponent.get("id", ""))
 
 	combo_label.text = ""
-	action_phase_label.text = "SELECT ACTION 1"
+	action_phase_label.text = "PRESS ATTACK TO START"
 
-	var sprite_base: String = GameManager.current_opponent.get("sprite_base", "")
-	if sprite_base != "":
-		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
-		opponent_sprite.texture = load(tex_path)
+	var sprite_sheet: String = GameManager.current_opponent.get("sprite_sheet", "")
+	if sprite_sheet != "":
+		var json_path := "res://data/sprite_frames/%s_frames.json" % sprite_sheet.get_file().get_basename()
+		if FileAccess.file_exists(json_path):
+			opponent_sprite.load_spritesheet_json(sprite_sheet, json_path)
+		else:
+			opponent_sprite.load_spritesheet(sprite_sheet, 4, 2)
+	else:
+		var sprite_base: String = GameManager.current_opponent.get("sprite_base", "")
+		if sprite_base != "":
+			var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
+			opponent_sprite.texture = load(tex_path)
 
 	# Load player idle animation from sprite sheet frames
 	var player_sprite_base: String = GameManager.player_fighter.get("sprite_base", "rookie")
@@ -79,10 +88,13 @@ func _ready() -> void:
 	player_sprite.load_animation(anim_folder)
 
 	_update_ui()
-	_build_action_buttons()
+	_build_attack_controls()
 	_build_tactic_hand()
 	_show_heat()
 	_prepare_opponent_actions()
+	_reset_round_puzzle_metrics()
+
+	_add_to_log("[color=#c9b38f]Round %d — FIGHT![/color]" % (GameManager.current_round_in_fight + 1))
 
 	AudioManager.play_round_bell()
 	Juice.fade_in(self, 0.3)
@@ -93,56 +105,18 @@ func _show_heat() -> void:
 	bonus_label.text = HeatSystem.get_heat_text(current_heat)
 	bonus_label.add_theme_color_override("font_color", HeatSystem.get_heat_color(current_heat))
 
-func _build_action_buttons() -> void:
+func _build_attack_controls() -> void:
+	# Clear old action buttons
 	for child in action_container.get_children():
 		child.queue_free()
 
-	var all_actions := BoxingAction.create_all()
-	var equipped := GameManager.equipped_moves
-
-	# If only 1 slot, auto-fill both with that move
-	if GameManager.move_slots == 1:
-		_auto_select_single_move(equipped[0])
-		return
-
-	for move_type in equipped:
-		var action: BoxingAction = all_actions[move_type]
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(160, 55)
-		var dmg := action.damage
-		if move_type == BoxingAction.ActionType.JAB:
-			dmg += GameManager.get_jab_damage_bonus()
-		btn.text = "%s (DMG: %d)" % [action.name, dmg]
-
-		var style := StyleBoxFlat.new()
-		style.bg_color = ACTION_COLORS.get(action.name, Color(0.3, 0.3, 0.3))
-		style.corner_radius_top_left = 8
-		style.corner_radius_top_right = 8
-		style.corner_radius_bottom_left = 8
-		style.corner_radius_bottom_right = 8
-		btn.add_theme_stylebox_override("normal", style)
-
-		var hover := style.duplicate()
-		hover.bg_color = style.bg_color.lightened(0.2)
-		btn.add_theme_stylebox_override("hover", hover)
-
-		btn.add_theme_font_size_override("font_size", 16)
-		btn.tooltip_text = action.description
-
-		btn.pressed.connect(_on_action_selected.bind(move_type))
-		action_container.add_child(btn)
-
-## When player only has 1 move slot, auto-select both actions
-func _auto_select_single_move(move_type: BoxingAction.ActionType) -> void:
-	selected_action_1 = move_type
-	action_selection_phase = 0
-	action_phase_label.text = "AUTO: Double %s" % BoxingAction.create_all()[move_type].name
-	_set_actions_disabled(true)
-	# Small delay then auto-execute
-	await get_tree().create_timer(0.3).timeout
-	_on_action_selected(move_type)
-	await get_tree().create_timer(0.2).timeout
-	_on_action_selected(move_type)
+	action_container.columns = 1
+	var attack_btn := Button.new()
+	attack_btn.text = "START ATTACK EXCHANGE"
+	attack_btn.custom_minimum_size = Vector2(300, 52)
+	attack_btn.disabled = (not is_player_turn) or round_over or _executing
+	attack_btn.pressed.connect(_on_start_attack_pressed)
+	action_container.add_child(attack_btn)
 
 func _build_tactic_hand() -> void:
 	var tactic_container: HBoxContainer = get_node_or_null("%TacticHandContainer")
@@ -257,6 +231,10 @@ func _prepare_opponent_actions() -> void:
 	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
 	var player_hp_pct := float(GameManager.player_hp) / float(GameManager.player_max_hp)
 	opponent_next_actions = opponent_ai.choose_actions(opp_hp_pct, 100, player_hp_pct)
+	# Opponent now also picks 3 actions — pad if AI only returns 2
+	if opponent_next_actions.size() < 3:
+		var extra := opponent_ai.choose_actions(opp_hp_pct, 100, player_hp_pct)
+		opponent_next_actions.append(extra[0] if not extra.is_empty() else BoxingAction.ActionType.JAB)
 
 	var telegraph_text := opponent_ai.get_telegraph_for_actions(opponent_next_actions)
 	_add_to_log("[color=#e89926]> %s[/color]" % telegraph_text)
@@ -267,44 +245,37 @@ func _prepare_opponent_actions() -> void:
 		_add_to_log("[color=#e6c44c]HUSTLER SENSE: %s![/color]" % first_action.name)
 
 # =============================================================================
-# Action Selection
+# Turn Start → Execution
 # =============================================================================
 
-func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
-	if not is_player_turn or round_over or _executing:
-		return
-	AudioManager.play_button_click()
+func _roll_player_actions() -> Array:
+	return GameManager.get_player_attack_pattern(3)
 
-	# All In perk no longer restricts actions (no block/dodge in new system)
-
-	if action_selection_phase == 0:
-		selected_action_1 = action_type
-		action_selection_phase = 1
-
-		var all_actions := BoxingAction.create_all()
-		var act1_name: String = (all_actions[action_type] as BoxingAction).name
-		action_phase_label.text = "Action 1: %s — SELECT ACTION 2" % act1_name
-
-		_highlight_action_button(action_type)
+func _on_start_attack_pressed() -> void:
+	if round_over or _executing:
 		return
 
-	# Second action selected — begin sequential execution
-	action_selection_phase = 0
 	is_player_turn = false
 	_executing = true
 	turn_count += 1
+	_build_attack_controls()
 
-	var player_actions: Array = [selected_action_1, action_type]
+	var player_actions: Array = _roll_player_actions()
 	opponent_ai.record_player_actions(player_actions)
 
-	# Combo detection
-	var combo_name := ComboSystem.get_combo_name(selected_action_1, action_type)
-	if combo_name != "":
-		combo_label.text = combo_name
+	var all_actions := BoxingAction.create_all()
+	var rolled_names: Array[String] = []
+	for action_type in player_actions:
+		var act: BoxingAction = all_actions[action_type]
+		rolled_names.append(act.name)
+	_add_to_log("[color=#c9b38f]Your combo: %s[/color]" % " - ".join(rolled_names))
+
+	# Check for critical hit (triple match)
+	var is_triple := ReelSystem.is_triple(player_actions)
+	if is_triple:
+		combo_label.text = "TRIPLE RHYTHM!"
 		combo_label.add_theme_color_override("font_color", GOLD)
 		Juice.punch_text(combo_label)
-		Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.15), 0.2)
-		Juice.screen_shake(self, 3.0, 0.1)
 
 	# Resolve tactic modifiers
 	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
@@ -316,7 +287,7 @@ func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 		_update_ui()
 
 	var player_stats := {
-		"damage_mod": 1.0,
+		"damage_mod": float(GameManager.player_fighter.get("damage_mod", 1.0)),
 		"tactic_guaranteed_hit": tactic_mods.player_guaranteed_hit,
 		"tactic_back_rank": tactic_mods.back_rank_active,
 		"tactic_dodge_auto_fail": tactic_mods.dodge_auto_fail,
@@ -324,18 +295,18 @@ func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 		"tactic_block_deals_damage": tactic_mods.block_deals_damage,
 		"endgame_damage_bonus": GameManager.endgame_damage_stacks,
 		"shop_base_damage_bonus": GameManager.shop_base_damage_bonus,
+		"solve_bonus_damage": int(GameManager.player_fighter.get("solve_bonus_damage", 0)),
 	}
+	var tourney_scale := GameManager.get_tournament_scale()
 	var opponent_stats := {
-		"damage_mod": GameManager.current_opponent.get("damage_mod", 1.0),
+		"damage_mod": GameManager.current_opponent.get("damage_mod", 1.0) * tourney_scale.damage,
 		"defense_mod": GameManager.current_opponent.get("defense_mod", 1.0),
 	}
 
-	# Disable all action buttons during execution
-	_set_actions_disabled(true)
 	action_phase_label.text = ""
 
-	# --- SEQUENTIAL EXECUTION ---
-	await _execute_turn(player_actions, opponent_next_actions, player_stats, opponent_stats, tactic_mods)
+	# --- EXECUTE ---
+	await _execute_puzzle_turn(player_actions, opponent_next_actions, player_stats, opponent_stats, tactic_mods)
 
 	_executing = false
 
@@ -358,16 +329,63 @@ func _on_action_selected(action_type: BoxingAction.ActionType) -> void:
 	tactic_played_this_turn = false
 	_build_tactic_hand()
 	_prepare_opponent_actions()
-	action_phase_label.text = "SELECT ACTION 1"
-	_set_actions_disabled(false)
-	_reset_action_highlights()
 	is_player_turn = true
+	action_phase_label.text = "PRESS ATTACK TO START"
+	_build_attack_controls()
 
 # =============================================================================
 # Sequential Turn Execution
 # =============================================================================
 
-func _execute_turn(
+## Critical Hit — triple match bypasses puzzle, auto-lands massive hit.
+func _execute_critical_hit_turn(
+	action_type: BoxingAction.ActionType,
+	opp_actions: Array,
+	player_stats: Dictionary,
+	opponent_stats: Dictionary,
+	tactic_mods: Dictionary,
+) -> void:
+	var all_actions := BoxingAction.create_all()
+	var act: BoxingAction = all_actions[action_type]
+
+	_add_to_log("[color=gold]★ TRIPLE %s — CRITICAL HIT! ★[/color]" % act.name.to_upper())
+	await get_tree().create_timer(0.4).timeout
+
+	var crit := combat_mgr.resolve_critical_hit(action_type, player_stats, opponent_stats)
+	for msg in crit.messages:
+		_add_to_log(msg)
+
+	GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - crit.damage)
+	AudioManager.play_punch(act.name.to_lower(), true)
+	Juice.hit_lunge(player_sprite, 1.0, 25.0, 0.25)
+	Juice.screen_shake(self, 18.0, 0.4)
+	Juice.flash(opponent_sprite, Color(1, 0.85, 0.2), 0.3)
+	Juice.damage_popup(self, crit.damage, opponent_sprite.global_position + Vector2(60, 0), true)
+	var hit_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
+	Juice.impact_burst(self, hit_pos, Color(1.0, 0.9, 0.3, 1.0), 70.0)
+	Juice.bar_punch(opponent_hp_bar)
+	_update_ui()
+
+	if _check_ko():
+		return
+
+	# Opponent still attacks back (2 of 3 as penalty for crit)
+	await get_tree().create_timer(0.6).timeout
+	var crit_taken := 0
+	for i in mini(2, opp_actions.size()):
+		var opp_r := await _run_opponent_attack(opp_actions[i], player_stats, opponent_stats)
+		crit_taken += opp_r.get("damage", 0)
+		if _check_ko():
+			return
+	GameManager.stats.total_damage_taken += crit_taken
+
+	GameManager.stats.total_damage_dealt += crit.damage
+	_update_ui()
+	_update_music_intensity()
+
+## Main turn: for each of 3 rounds, player attacks (puzzle → QTE bonus)
+## then opponent attacks (timing defense).
+func _execute_puzzle_turn(
 	player_actions: Array,
 	opp_actions: Array,
 	player_stats: Dictionary,
@@ -375,92 +393,55 @@ func _execute_turn(
 	tactic_mods: Dictionary,
 ) -> void:
 	var all_actions := BoxingAction.create_all()
-
-	# Detect combos for post-step bonuses
-	var player_combo := ComboSystem.detect_combo(player_actions[0], player_actions[1])
-	var opp_combo := ComboSystem.detect_combo(opp_actions[0], opp_actions[1])
-
-	# Track action results for combo application
 	var step_results := []
+	var total_dealt := 0
+	var total_taken := 0
 
-	# ---------- STEP 1: Player Action 1 (Offensive QTE) ----------
-	var p1_act: BoxingAction = all_actions[player_actions[0]]
-	AudioManager.play_whoosh()
-	_add_to_log("[color=#6eaadc]You throw a %s![/color]" % p1_act.name)
-	var qte1: String = await _run_offensive_qte(player_actions[0])
+	for i in 3:
+		var p_action: BoxingAction.ActionType = player_actions[i] if i < player_actions.size() else BoxingAction.ActionType.JAB
+		var o_action: BoxingAction.ActionType = opp_actions[i] if i < opp_actions.size() else BoxingAction.ActionType.JAB
+		var p_act: BoxingAction = all_actions[p_action]
 
-	var r1 := combat_mgr.resolve_single_action(
-		player_actions[0], opp_actions[0], qte1, true, player_stats, opponent_stats
-	)
-	step_results.append(r1)
-	_apply_step_damage(r1, true, qte1)
-	for msg in r1.messages:
-		_add_to_log(msg)
+		# ── PLAYER ATTACK: Puzzle → QTE bonus ──
+		_add_to_log("[color=#6eaadc]You wind up a %s! (%d/3)[/color]" % [p_act.name, i + 1])
+		AudioManager.play_whoosh()
 
-	if _check_ko():
-		return
+		# 1. Mini chess puzzle — determines if punch lands
+		var puzzle_result: Dictionary = await _run_mini_puzzle()
+		var puzzle_solved: bool = puzzle_result.get("solved", false)
+		_record_round_puzzle_result(puzzle_result)
+		_show_heat()
 
-	await get_tree().create_timer(0.4).timeout
+		var qte_atk := "normal"
+		if puzzle_solved:
+			# 2. QTE for bonus damage modifier
+			qte_atk = await _run_offensive_qte(p_action)
 
-	# ---------- STEP 2: Enemy Action 1 (Defensive QTE) ----------
-	AudioManager.play_whoosh()
-	_add_to_log("[color=#d96050]Opponent attacks![/color]")
-	var qte2: String = await _run_defensive_qte()
+		var r_atk := combat_mgr.resolve_player_attack(p_action, puzzle_solved, qte_atk, player_stats)
+		step_results.append(r_atk)
+		_apply_player_attack_damage(r_atk, puzzle_solved, qte_atk)
+		for msg in r_atk.messages:
+			_add_to_log(msg)
 
-	var r2 := combat_mgr.resolve_single_action(
-		opp_actions[0], player_actions[0], qte2, false, player_stats, opponent_stats
-	)
-	step_results.append(r2)
-	_apply_step_damage(r2, false, qte2)
-	for msg in r2.messages:
-		_add_to_log(msg)
+		total_dealt += r_atk.get("damage", 0)
 
-	if _check_ko():
-		return
+		if _check_ko():
+			return
 
-	await get_tree().create_timer(0.4).timeout
+		await get_tree().create_timer(0.35).timeout
 
-	# ---------- STEP 3: Player Action 2 (Offensive QTE) ----------
-	var p2_act: BoxingAction = all_actions[player_actions[1]]
-	AudioManager.play_whoosh()
-	_add_to_log("[color=#6eaadc]You throw a %s![/color]" % p2_act.name)
-	var qte3: String = await _run_offensive_qte(player_actions[1])
+		# ── OPPONENT ATTACK: Timing defense ──
+		var opp_damage_result := await _run_opponent_attack(o_action, player_stats, opponent_stats)
+		step_results.append(opp_damage_result)
+		total_taken += opp_damage_result.get("damage", 0)
 
-	var r3 := combat_mgr.resolve_single_action(
-		player_actions[1], opp_actions[1], qte3, true, player_stats, opponent_stats
-	)
-	step_results.append(r3)
+		if _check_ko():
+			return
 
-	if not player_combo.is_empty():
-		_apply_sequential_combo(player_combo, step_results[0], r3, true)
+		if i < 2:
+			await get_tree().create_timer(0.35).timeout
 
-	_apply_step_damage(r3, true, qte3)
-	for msg in r3.messages:
-		_add_to_log(msg)
-
-	if _check_ko():
-		return
-
-	await get_tree().create_timer(0.4).timeout
-
-	# ---------- STEP 4: Enemy Action 2 (Defensive QTE) ----------
-	AudioManager.play_whoosh()
-	_add_to_log("[color=#d96050]Opponent attacks![/color]")
-	var qte4: String = await _run_defensive_qte()
-
-	var r4 := combat_mgr.resolve_single_action(
-		opp_actions[1], player_actions[1], qte4, false, player_stats, opponent_stats
-	)
-	step_results.append(r4)
-
-	if not opp_combo.is_empty():
-		_apply_sequential_combo(opp_combo, step_results[1], r4, false)
-
-	_apply_step_damage(r4, false, qte4)
-	for msg in r4.messages:
-		_add_to_log(msg)
-
-	# --- Zwischenzug: free JAB between opponent's actions ---
+	# --- Zwischenzug: free JAB ---
 	if tactic_mods.free_interrupt_action != "":
 		var interrupt_dmg := 5 + GameManager.shop_base_damage_bonus + GameManager.endgame_damage_stacks
 		GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - interrupt_dmg)
@@ -473,7 +454,6 @@ func _execute_turn(
 	# --- Opponent gimmick effects ---
 	var gimmick = GameManager.current_opponent.get("gimmick", null)
 	if gimmick is Dictionary and not gimmick.is_empty():
-		# Build a compat result for gimmick system
 		var compat_result := _build_compat_result(step_results)
 		var gimmick_msgs := GimmickSystem.apply_post_turn(
 			gimmick, compat_result,
@@ -509,24 +489,44 @@ func _execute_turn(
 			second_wind_used = true
 			_add_to_log("[color=green]SECOND WIND! +%d HP![/color]" % heal)
 
-	# Track total stats
-	var total_dealt := 0
-	var total_taken := 0
-	for i in [0, 2]:  # Steps 0 and 2 are player attacks
-		total_dealt += step_results[i].get("damage", 0)
-	for i in [1, 3]:  # Steps 1 and 3 are opponent attacks
-		total_taken += step_results[i].get("damage", 0)
 	GameManager.stats.total_damage_dealt += total_dealt
 	GameManager.stats.total_damage_taken += total_taken
-
+	_apply_fighter_regen()
 	_update_ui()
 	_update_music_intensity()
 
 # =============================================================================
-# QTE Runners — one per mini-game type
+# Puzzle & QTE Runners
 # =============================================================================
 
-## Offensive QTE: JAB → Pendulum (slow), CROSS → Cross QTE, UPPERCUT → Convergence.
+## Mini chess puzzle — player must solve to land their punch.
+func _run_mini_puzzle() -> Dictionary:
+	var puzzle_data := GameManager.get_mini_puzzle()
+	var puzzle_time := 12.0
+	var difficulty: int = GameManager.current_opponent.get("chess_difficulty", 1)
+	if difficulty >= 4:
+		puzzle_time = 9.0
+	elif difficulty >= 3:
+		puzzle_time = 10.0
+
+	var chess_time_ratio := GameManager.get_chess_time_limit() / 60.0
+	puzzle_time *= chess_time_ratio
+	puzzle_time += float(GameManager.player_fighter.get("puzzle_time_bonus", 0.0))
+	puzzle_time = clampf(puzzle_time, 6.0, 18.0)
+	if puzzle_time <= 0.25:
+		puzzle_time = 0.25
+	var fighter_error_penalty := float(GameManager.player_fighter.get("puzzle_error_penalty", 2.0))
+
+	var mini_puz := MiniPuzzle.new()
+	mini_puz.custom_minimum_size = Vector2(MiniPuzzle.SQ * 8 + 24, MiniPuzzle.SQ * 8 + 60)
+	_spawn_in_center_stage(mini_puz)
+	AudioManager.play_qte_appear()
+	var result: Dictionary = await mini_puz.run(puzzle_data, puzzle_time, fighter_error_penalty)
+	mini_puz.queue_free()
+	return result
+
+## Offensive QTE: bonus modifier after puzzle solve.
+## JAB → Pendulum, CROSS → Cross QTE, UPPERCUT → Convergence.
 func _run_offensive_qte(action: BoxingAction.ActionType) -> String:
 	var result: String
 	match action:
@@ -540,19 +540,60 @@ func _run_offensive_qte(action: BoxingAction.ActionType) -> String:
 			result = await _run_pendulum_qte()
 	return result
 
-## Defensive QTE: Knight's Leap directional sequence.
-func _run_defensive_qte() -> String:
-	return await _run_knights_leap_qte()
+## Opponent attack with timing-based defense.
+## Returns a result dict with final damage dealt.
+func _run_opponent_attack(
+	opp_action: BoxingAction.ActionType,
+	player_stats: Dictionary,
+	opponent_stats: Dictionary,
+) -> Dictionary:
+	var all_actions := BoxingAction.create_all()
+	var o_act: BoxingAction = all_actions[opp_action]
+	var punch_count := _get_punch_count(opp_action)
+
+	AudioManager.play_whoosh()
+	_add_to_log("[color=#d96050]%s throws %s! (%d hits)[/color]" % [
+		GameManager.current_opponent.get("name", "Opponent"), o_act.name, punch_count])
+
+	var defense_qte := QTETimingDefense.new()
+	defense_qte.prompt_text = "BLOCK %s!" % o_act.name.to_upper()
+	defense_qte.prompt_color = Color(0.32, 0.52, 0.82)
+	defense_qte.custom_minimum_size = Vector2(320, 160)
+	_spawn_in_center_stage(defense_qte)
+	AudioManager.play_qte_appear()
+	var def_result: Dictionary = await defense_qte.run(punch_count)
+	defense_qte.queue_free()
+
+	var damage_mult: float = def_result.get("damage_multiplier", 1.0)
+	var block_qualities: Array = def_result.get("block_qualities", [])
+
+	var r := combat_mgr.resolve_opponent_attack(opp_action, damage_mult, opponent_stats, player_stats)
+	_apply_opponent_attack_damage(r, block_qualities)
+	for msg in r.messages:
+		_add_to_log(msg)
+
+	await get_tree().create_timer(0.3).timeout
+	return r
+
+## How many individual punches an opponent action consists of.
+func _get_punch_count(action: BoxingAction.ActionType) -> int:
+	match action:
+		BoxingAction.ActionType.JAB:
+			return 3
+		BoxingAction.ActionType.CROSS:
+			return 2
+		BoxingAction.ActionType.UPPERCUT:
+			return 1
+	return 2
 
 ## Pendulum (Jab) — slow horizontal timing bar, easy to hit.
 func _run_pendulum_qte() -> String:
 	var qte := QTEPendulum.new()
-	qte.prompt_text = "JAB!"
-	qte.prompt_color = Color(0.88, 0.36, 0.32)
-	qte.cursor_speed = 420.0  # Slower = easier for jab
-	qte.position = _get_center_stage_pos(QTEPendulum.BAR_WIDTH + 40, 60)
-	qte.z_index = 150
-	add_child(qte)
+	qte.prompt_text = "BONUS!"
+	qte.prompt_color = Color(0.88, 0.72, 0.28)
+	qte.cursor_speed = 420.0
+	qte.custom_minimum_size = Vector2(QTEPendulum.BAR_WIDTH + 40, 60)
+	_spawn_in_center_stage(qte)
 	AudioManager.play_qte_appear()
 	var result: String = await qte.run()
 	AudioManager.play_qte_result(result)
@@ -563,12 +604,11 @@ func _run_pendulum_qte() -> String:
 ## Cross QTE — two perpendicular timing bars, gradual curve.
 func _run_cross_qte() -> String:
 	var qte := QTECross.new()
-	qte.prompt_text = "CROSS!"
-	qte.prompt_color = Color(0.88, 0.36, 0.32)
+	qte.prompt_text = "BONUS!"
+	qte.prompt_color = Color(0.88, 0.72, 0.28)
 	var cross_size := QTECross.ARM_LENGTH * 2 + 60
-	qte.position = _get_center_stage_pos(cross_size, cross_size + 40)
-	qte.z_index = 150
-	add_child(qte)
+	qte.custom_minimum_size = Vector2(cross_size, cross_size + 40)
+	_spawn_in_center_stage(qte)
 	AudioManager.play_qte_appear()
 	var result: String = await qte.run()
 	AudioManager.play_qte_result(result)
@@ -579,11 +619,13 @@ func _run_cross_qte() -> String:
 ## Convergence (Uppercut) — shrinking circles over enemy portrait.
 func _run_convergence_qte() -> String:
 	var qte := QTEConvergence.new()
-	qte.prompt_text = "UPPERCUT!"
-	qte.prompt_color = Color(0.88, 0.36, 0.32)
-	# Center over opponent sprite
+	qte.prompt_text = "BONUS!"
+	qte.prompt_color = Color(0.88, 0.72, 0.28)
+	# Convergence overlays opponent portrait — positioned absolutely on root
 	var opp_center := opponent_sprite.global_position + opponent_sprite.size * 0.5
 	var qte_half := Vector2(QTEConvergence.START_RADIUS + 20, QTEConvergence.START_RADIUS + 30)
+	var qte_size := qte_half * 2.0
+	qte.custom_minimum_size = qte_size
 	qte.position = opp_center - qte_half
 	qte.z_index = 150
 	add_child(qte)
@@ -594,27 +636,18 @@ func _run_convergence_qte() -> String:
 	qte.queue_free()
 	return result
 
-## Knight's Leap (Defense) — directional arrow sequence.
-func _run_knights_leap_qte() -> String:
-	var qte := QTEKnightsLeap.new()
-	qte.prompt_text = "DEFEND!"
-	qte.prompt_color = Color(0.32, 0.52, 0.82)
-	qte.position = _get_center_stage_pos(320, 110)
-	qte.z_index = 150
-	add_child(qte)
-	AudioManager.play_qte_appear()
-	var result: String = await qte.run()
-	AudioManager.play_qte_result(result)
-	_spawn_qte_result_popup(result, qte.global_position + Vector2(160, -10))
-	qte.queue_free()
-	return result
-
-## Position helper — centers a QTE of given size within the center stage area.
-func _get_center_stage_pos(w: float, h: float) -> Vector2:
-	return Vector2(
+## Spawn a mini-game centered on CenterStage but parented to self (root).
+## Parenting to root keeps fullscreen overlays (dim, PRESET_FULL_RECT) and
+## mouse input working correctly across the whole viewport.
+func _spawn_in_center_stage(node: Control) -> void:
+	var w := node.custom_minimum_size.x
+	var h := node.custom_minimum_size.y
+	node.position = Vector2(
 		center_stage.global_position.x + (center_stage.size.x - w) * 0.5,
 		center_stage.global_position.y + (center_stage.size.y - h) * 0.5
 	)
+	node.z_index = 150
+	add_child(node)
 
 ## Floating result text popup above the QTE.
 func _spawn_qte_result_popup(result: String, pos: Vector2) -> void:
@@ -677,75 +710,103 @@ func _spawn_qte_result_popup(result: String, pos: Vector2) -> void:
 		Juice.screen_flash(self, Color(1, 1, 1, 0.12), 0.1)
 
 # =============================================================================
-# Step Damage Application
+# Damage Application
 # =============================================================================
 
-func _apply_step_damage(result: Dictionary, is_player_attacking: bool, qte_result: String) -> void:
+## Apply player attack damage — puzzle determined hit/miss, QTE gave bonus.
+func _apply_player_attack_damage(result: Dictionary, puzzle_solved: bool, qte_result: String) -> void:
 	var damage: int = result.get("damage", 0)
 	var heat := GameManager.get_heat()
 	var is_heated := heat >= 2.5
-
-	# QTE quality tiers for visual intensity
 	var is_big_hit := qte_result in ["perfect", "critical"]
-	var is_good_defense := qte_result == "perfect_defense"
 
-	if is_player_attacking:
-		GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - damage)
+	if not puzzle_solved:
+		# Puzzle failed → whiff
+		AudioManager.play_miss()
+		_add_to_log("[color=gray]Puzzle failed — punch misses![/color]")
+		_update_ui()
+		return
 
-		if damage > 0:
-			# Punch impact sound based on action name
-			var action_name: String = result.get("action_name", "jab")
-			AudioManager.play_punch(action_name, is_big_hit)
-			# Attacker lunges forward
-			Juice.hit_lunge(player_sprite, 1.0, 15.0, 0.18)
-			# Target recoils
-			var shake := 12.0 if is_big_hit else 6.0
-			Juice.screen_shake(opponent_sprite, shake, 0.16)
-			Juice.flash(opponent_sprite, Color(1, 0.3, 0.3), 0.15)
-			Juice.damage_popup(self, damage, opponent_sprite.global_position + Vector2(60, 0), is_heated or is_big_hit)
-			# Impact burst at hit point
-			var hit_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
-			if is_big_hit:
-				Juice.impact_burst(self, hit_pos, Color(1.0, 0.9, 0.3, 0.95), 55.0)
-				Juice.screen_shake(self, 4.0, 0.1)
-				Juice.bar_punch(opponent_hp_bar)
-			else:
-				Juice.impact_burst(self, hit_pos, Color(1.0, 0.7, 0.4, 0.7), 35.0)
-			Juice.bar_punch(opponent_hp_bar)
-		elif result.get("dodged", false):
-			# Opponent dodged — they sway smoothly
-			AudioManager.play_dodge()
-			Juice.dodge_slide(opponent_sprite, 1.0, 25.0, 0.3)
-			Juice.afterimage(self, opponent_sprite, Color(0.5, 0.5, 0.8, 0.4))
-		elif qte_result == "miss":
-			AudioManager.play_miss()
-	else:
+	GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - damage)
+
+	if damage > 0:
+		var action_name: String = result.get("action_name", "jab")
+		AudioManager.play_punch(action_name, is_big_hit)
+		Juice.hit_lunge(player_sprite, 1.0, 15.0, 0.18)
+		var shake := 12.0 if is_big_hit else 6.0
+		Juice.screen_shake(opponent_sprite, shake, 0.16)
+		Juice.flash(opponent_sprite, Color(1, 0.3, 0.3), 0.15)
+		Juice.screen_flash(self, Color(1, 0.9, 0.3, 0.15), 0.1)
+		CRTOverlay.punch_impact(0.5 if not is_big_hit else 1.0)
+		Juice.damage_popup(self, damage, opponent_sprite.global_position + Vector2(60, 0), is_heated or is_big_hit)
+		var hit_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
+		if is_big_hit:
+			Juice.impact_burst(self, hit_pos, Color(1.0, 0.9, 0.3, 0.95), 55.0)
+			Juice.screen_shake(self, 5.0, 0.12)
+			Juice.screen_flash(self, Color(1, 0.95, 0.4, 0.25), 0.15)
+		else:
+			Juice.impact_burst(self, hit_pos, Color(1.0, 0.7, 0.4, 0.7), 35.0)
+			Juice.screen_shake(self, 2.0, 0.08)
+		Juice.bar_punch(opponent_hp_bar)
+
+	_update_ui()
+
+func _apply_fighter_regen() -> void:
+	var regen := int(GameManager.player_fighter.get("regen_per_turn", 0))
+	if regen <= 0 or GameManager.player_hp <= 0:
+		return
+	var before := GameManager.player_hp
+	GameManager.player_hp = mini(GameManager.player_hp + regen, GameManager.player_max_hp)
+	var healed := GameManager.player_hp - before
+	if healed > 0:
+		_add_to_log("[color=green]%s regenerates %d HP.[/color]" % [
+			GameManager.player_fighter.get("name", "Fighter"), healed
+		])
+
+## Apply opponent attack damage — timing defense determined block quality.
+func _apply_opponent_attack_damage(result: Dictionary, block_qualities: Array) -> void:
+	var damage: int = result.get("damage", 0)
+	var avg_mult: float = result.get("damage_multiplier", 1.0)
+	var is_perfect_block := avg_mult <= 0.05
+
+	if is_perfect_block:
+		# Perfect block — no damage
+		opponent_sprite.play_anim("punch", false)
+		Juice.hit_lunge(opponent_sprite, -1.0, 14.0, 0.2)
+		AudioManager.play_perfect_block()
+		Juice.dodge_slide(player_sprite, -1.0, 12.0, 0.25)
+		Juice.flash(player_sprite, Color(0.3, 0.6, 1.0, 0.7), 0.15)
+		Juice.screen_shake(player_sprite, 4.0, 0.1)
+		Juice.screen_flash(self, Color(0.3, 0.5, 1.0, 0.15), 0.1)
+		CRTOverlay.punch_impact(0.4)
+		var block_pos := player_sprite.global_position + player_sprite.size * 0.5
+		Juice.impact_burst(self, block_pos, Color(0.3, 0.6, 1.0, 0.7), 35.0)
+		Juice.blocked_popup(self, block_pos + Vector2(0, -30))
+	elif damage > 0:
 		GameManager.player_hp = maxi(0, GameManager.player_hp - damage)
-
-		if damage > 0:
-			AudioManager.play_hit_taken()
-			Juice.screen_shake(player_sprite, 6.0, 0.14)
-			Juice.flash(player_sprite, Color(1, 0.3, 0.3), 0.15)
-			Juice.damage_popup(self, damage, player_sprite.global_position + Vector2(60, 0), false)
-			var hit_pos := player_sprite.global_position + player_sprite.size * 0.5
-			Juice.impact_burst(self, hit_pos, Color(0.9, 0.3, 0.3, 0.7), 30.0)
-			Juice.bar_punch(player_hp_bar)
-			# Screen shake the whole scene for heavy hits
-			if damage >= 15:
-				Juice.screen_shake(self, 3.0, 0.08)
-		elif is_good_defense:
-			# Perfect defense — satisfying block
-			AudioManager.play_perfect_block()
-			Juice.dodge_slide(player_sprite, -1.0, 12.0, 0.25)
-			Juice.flash(player_sprite, Color(0.3, 0.6, 1.0, 0.7), 0.15)
-			Juice.screen_shake(player_sprite, 3.0, 0.08)
-			var block_pos := player_sprite.global_position + player_sprite.size * 0.5
-			Juice.impact_burst(self, block_pos, Color(0.3, 0.6, 1.0, 0.6), 30.0)
-		elif result.get("dodged", false):
-			# Player dodged — smooth sway + afterimage
-			AudioManager.play_dodge_smooth()
-			Juice.dodge_slide(player_sprite, -1.0, 28.0, 0.35)
-			Juice.afterimage(self, player_sprite, Color(0.3, 0.8, 0.5, 0.4))
+		opponent_sprite.play_anim("punch", false)
+		Juice.hit_lunge(opponent_sprite, -1.0, 18.0, 0.2)
+		AudioManager.play_hit_taken()
+		var shake_str := 8.0 * avg_mult
+		Juice.screen_shake(player_sprite, shake_str, 0.18)
+		Juice.screen_shake(self, 3.0 * avg_mult, 0.12)
+		Juice.flash(player_sprite, Color(1, 0.3, 0.3), 0.18)
+		Juice.screen_flash(self, Color(1, 0.15, 0.1, 0.2 * avg_mult), 0.12)
+		CRTOverlay.punch_impact(0.7 * avg_mult)
+		Juice.damage_popup(self, damage, player_sprite.global_position + Vector2(60, 0), false)
+		var hit_pos := player_sprite.global_position + player_sprite.size * 0.5
+		Juice.impact_burst(self, hit_pos, Color(0.9, 0.3, 0.3, 0.8 * avg_mult), 38.0)
+		Juice.bar_punch(player_hp_bar)
+		if damage >= 15:
+			Juice.screen_shake(self, 5.0, 0.12)
+			CRTOverlay.punch_impact(1.0)
+			Juice.screen_flash(self, Color(1, 0.2, 0.15, 0.3), 0.18)
+	else:
+		# Blocked enough to take no damage
+		opponent_sprite.play_anim("punch", false)
+		Juice.hit_lunge(opponent_sprite, -1.0, 10.0, 0.15)
+		AudioManager.play_perfect_block()
+		Juice.dodge_slide(player_sprite, -1.0, 8.0, 0.2)
 
 	_update_ui()
 
@@ -758,24 +819,6 @@ func _check_ko() -> bool:
 		return true
 	return false
 
-# =============================================================================
-# Combo Application (Sequential)
-# =============================================================================
-
-## Adapt combo bonuses for sequential resolution.
-## result1 = first action result, result2 = second action result (being modified).
-func _apply_sequential_combo(combo: Dictionary, result1: Dictionary, result2: Dictionary, is_player: bool) -> void:
-	var effect: String = combo.get("effect", "")
-
-	match effect:
-		"bonus_damage_action2":
-			var bonus: int = combo.get("bonus_damage", 3)
-			result2["damage"] = result2.get("damage", 0) + bonus
-			result2.messages.append("[color=yellow]COMBO: %s! +%d![/color]" % [combo.get("name", ""), bonus])
-
-	if not combo.is_empty():
-		GameManager.stats["combos_landed"] = GameManager.stats.get("combos_landed", 0) + 1
-
 ## Build a backwards-compatible result dict for GimmickSystem.
 func _build_compat_result(step_results: Array) -> Dictionary:
 	var total_dealt := 0
@@ -783,9 +826,9 @@ func _build_compat_result(step_results: Array) -> Dictionary:
 
 	for i in step_results.size():
 		var r: Dictionary = step_results[i]
-		if i == 0 or i == 2:  # player attack steps
+		if i % 2 == 0:  # player attack steps (0, 2, 4)
 			total_dealt += r.get("damage", 0)
-		else:  # opponent attack steps
+		else:  # opponent attack steps (1, 3, 5)
 			total_taken += r.get("damage", 0)
 
 	return {
@@ -800,45 +843,8 @@ func _build_compat_result(step_results: Array) -> Dictionary:
 # UI Helpers
 # =============================================================================
 
-func _highlight_action_button(action_type: BoxingAction.ActionType) -> void:
-	var all_actions := BoxingAction.create_all()
-	var i := 0
-	for at in all_actions:
-		if i < action_container.get_child_count():
-			var btn: Button = action_container.get_child(i)
-			if at == action_type:
-				var style: StyleBoxFlat = btn.get_theme_stylebox("normal")
-				style.border_color = GOLD
-				style.border_width_left = 3
-				style.border_width_right = 3
-				style.border_width_top = 3
-				style.border_width_bottom = 3
-		i += 1
-
-func _reset_action_highlights() -> void:
-	var all_actions := BoxingAction.create_all()
-	var i := 0
-	for at in all_actions:
-		if i < action_container.get_child_count():
-			var btn: Button = action_container.get_child(i)
-			var style: StyleBoxFlat = btn.get_theme_stylebox("normal")
-			style.border_color = Color(0, 0, 0, 0)
-			style.border_width_left = 0
-			style.border_width_right = 0
-			style.border_width_top = 0
-			style.border_width_bottom = 0
-		i += 1
-
 func _set_actions_disabled(disabled: bool) -> void:
-	for btn in action_container.get_children():
-		var b := btn as Button
-		b.disabled = disabled
-		if disabled:
-			b.focus_mode = Control.FOCUS_NONE
-			b.release_focus()
-		else:
-			b.focus_mode = Control.FOCUS_ALL
-	# Also disable tactic buttons to prevent focus stealing during QTE
+	# Disable tactic buttons to prevent focus stealing during QTE
 	var tactic_container := get_node_or_null("%TacticHandContainer")
 	if tactic_container:
 		for child in tactic_container.get_children():
@@ -866,6 +872,53 @@ func _update_ui() -> void:
 func _add_to_log(text: String) -> void:
 	combat_log.append_text(text + "\n")
 	combat_log.scroll_to_line(combat_log.get_line_count())
+
+func _reset_round_puzzle_metrics() -> void:
+	_round_puzzle_solved = true
+	_round_puzzle_mistakes = 0
+	_round_puzzle_solve_time = 0.0
+	_round_puzzle_time_limit = 0.0
+	_round_puzzle_attempts = 0
+
+func _record_round_puzzle_result(puzzle_result: Dictionary) -> void:
+	var solved: bool = puzzle_result.get("solved", false)
+	var mistakes: int = int(puzzle_result.get("mistakes", 0))
+	var raw_time_limit: float = float(puzzle_result.get("time_limit", 0.0))
+	var raw_solve_time: float = float(puzzle_result.get("solve_time", raw_time_limit))
+	var raw_time_remaining: float = float(puzzle_result.get("time_remaining", 0.0))
+	var free_mistakes := GameManager.get_free_mistakes()
+	var real_mistakes := maxi(0, mistakes - free_mistakes)
+	var effective_time_limit := GameManager.get_chess_time_limit()
+	var solve_ratio := 1.0
+	var remaining_ratio := 0.0
+	if raw_time_limit > 0.0:
+		solve_ratio = clampf(raw_solve_time / raw_time_limit, 0.0, 1.0)
+		remaining_ratio = clampf(raw_time_remaining / raw_time_limit, 0.0, 1.0)
+	var solve_time := effective_time_limit * solve_ratio
+	var time_remaining := effective_time_limit * remaining_ratio
+
+	GameManager.set_chess_result(solved, time_remaining, solve_time, real_mistakes)
+
+	_round_puzzle_solved = _round_puzzle_solved and solved
+	_round_puzzle_attempts += 1
+	_round_puzzle_mistakes += real_mistakes
+	_round_puzzle_solve_time += solve_time
+	_round_puzzle_time_limit += effective_time_limit
+
+func _finalize_round_puzzle_stats() -> void:
+	if _round_puzzle_attempts <= 0:
+		GameManager.current_fight_puzzle_solved = false
+		GameManager.chess_mistakes = 0
+		GameManager.chess_solve_time = 0.0
+		GameManager.chess_time_remaining = 0.0
+		return
+
+	GameManager.current_fight_puzzle_solved = _round_puzzle_solved
+	GameManager.chess_mistakes = _round_puzzle_mistakes
+	var avg_solve_time := _round_puzzle_solve_time / float(_round_puzzle_attempts)
+	var avg_time_limit := _round_puzzle_time_limit / float(_round_puzzle_attempts)
+	GameManager.chess_solve_time = avg_solve_time
+	GameManager.chess_time_remaining = maxf(avg_time_limit - avg_solve_time, 0.0)
 
 func _on_ko(winner: String) -> void:
 	round_over = true
@@ -899,6 +952,7 @@ func _on_ko(winner: String) -> void:
 		GameManager.opponent_hp = 0
 	else:
 		GameManager.player_hp = 0
+	_finalize_round_puzzle_stats()
 	GameManager.advance_fight_round()
 
 func _update_music_intensity() -> void:
@@ -910,7 +964,8 @@ func _update_music_intensity() -> void:
 func _end_boxing_round() -> void:
 	round_over = true
 	is_player_turn = false
-	_add_to_log("Round over! Back to the chess board...")
+	_add_to_log("Round over! Corner break...")
 
 	await get_tree().create_timer(1.5).timeout
+	_finalize_round_puzzle_stats()
 	GameManager.advance_fight_round()
