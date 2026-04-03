@@ -35,10 +35,10 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="action_panel"]
-content_margin_left = 10.0
-content_margin_top = 10.0
-content_margin_right = 10.0
-content_margin_bottom = 10.0
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
 bg_color = Color(0.06, 0.05, 0.1, 0.9)
 border_width_left = 1
 border_width_top = 1
@@ -85,36 +85,35 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.06, 0.04, 0.09, 1)
 
-[node name="CenterStage" type="Control" parent="."]
-unique_name_in_owner = true
+[node name="MainVBox" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.12
-anchor_top = 0.05
-anchor_right = 0.88
-anchor_bottom = 0.52
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
+theme_override_constants/separation = 0
 
-[node name="TopBar" type="HBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 16.0
-offset_top = 8.0
-offset_right = -16.0
-offset_bottom = 42.0
-grow_horizontal = 2
+[node name="ArenaSection" type="VBoxContainer" parent="MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 7.0
+theme_override_constants/separation = 0
 
-[node name="PhaseLabel" type="Label" parent="TopBar"]
+[node name="TopBar" type="HBoxContainer" parent="MainVBox/ArenaSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="PhaseLabel" type="Label" parent="MainVBox/ArenaSection/TopBar"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 22
 theme_override_colors/font_color = Color(0.82, 0.32, 0.26, 1)
 text = "BOXING ROUND"
 
-[node name="RoundTimerLabel" type="Label" parent="TopBar"]
+[node name="RoundTimerLabel" type="Label" parent="MainVBox/ArenaSection/TopBar"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -123,7 +122,7 @@ theme_override_colors/font_color = Color(0.92, 0.88, 0.72, 1)
 text = "03:00"
 horizontal_alignment = 1
 
-[node name="BonusLabel" type="Label" parent="TopBar"]
+[node name="BonusLabel" type="Label" parent="MainVBox/ArenaSection/TopBar"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -131,26 +130,19 @@ theme_override_font_sizes/font_size = 14
 text = ""
 horizontal_alignment = 2
 
-[node name="Arena" type="HBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.0
-anchor_top = 0.07
-anchor_right = 1.0
-anchor_bottom = 0.50
-offset_left = 12.0
-offset_right = -12.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="Arena" type="HBoxContainer" parent="MainVBox/ArenaSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 0
 
-[node name="PlayerPanel" type="VBoxContainer" parent="Arena"]
+[node name="PlayerPanel" type="VBoxContainer" parent="MainVBox/ArenaSection/Arena"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 0.3
 theme_override_constants/separation = 4
 
-[node name="PlayerNameLabel" type="Label" parent="Arena/PlayerPanel"]
+[node name="PlayerNameLabel" type="Label" parent="MainVBox/ArenaSection/Arena/PlayerPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
@@ -158,23 +150,23 @@ theme_override_colors/font_color = Color(0.52, 0.74, 0.92, 1)
 text = "Player"
 horizontal_alignment = 0
 
-[node name="PlayerPortrait" type="PanelContainer" parent="Arena/PlayerPanel"]
+[node name="PlayerPortrait" type="PanelContainer" parent="MainVBox/ArenaSection/Arena/PlayerPanel"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 148)
+size_flags_vertical = 3
 theme_override_styles/panel = SubResource("portrait_bg")
 
-[node name="PlayerSprite" type="TextureRect" parent="Arena/PlayerPanel/PlayerPortrait"]
+[node name="PlayerSprite" type="TextureRect" parent="MainVBox/ArenaSection/Arena/PlayerPanel/PlayerPortrait"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 140)
 size_flags_horizontal = 3
+size_flags_vertical = 3
 expand_mode = 1
 stretch_mode = 5
 script = ExtResource("animated_portrait")
 fps = 10.0
 autoplay = true
 
-[node name="PlayerHPBar" type="ProgressBar" parent="Arena/PlayerPanel"]
+[node name="PlayerHPBar" type="ProgressBar" parent="MainVBox/ArenaSection/Arena/PlayerPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 16)
@@ -184,7 +176,7 @@ show_percentage = false
 theme_override_styles/fill = SubResource("hp_fill")
 theme_override_styles/background = SubResource("hp_bg")
 
-[node name="PlayerHPLabel" type="Label" parent="Arena/PlayerPanel"]
+[node name="PlayerHPLabel" type="Label" parent="MainVBox/ArenaSection/Arena/PlayerPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
@@ -192,19 +184,18 @@ theme_override_colors/font_color = Color(0.45, 0.88, 0.48, 1)
 text = "HP: 100/100"
 horizontal_alignment = 0
 
-[node name="CenterSpacer" type="Control" parent="Arena"]
-unique_name_in_owner = true
+[node name="CenterSpacer" type="Control" parent="MainVBox/ArenaSection/Arena"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 0.4
 
-[node name="OpponentPanel" type="VBoxContainer" parent="Arena"]
+[node name="OpponentPanel" type="VBoxContainer" parent="MainVBox/ArenaSection/Arena"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 0.3
 theme_override_constants/separation = 4
 
-[node name="OpponentNameLabel" type="Label" parent="Arena/OpponentPanel"]
+[node name="OpponentNameLabel" type="Label" parent="MainVBox/ArenaSection/Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
@@ -212,16 +203,17 @@ theme_override_colors/font_color = Color(0.88, 0.36, 0.32, 1)
 text = "Opponent"
 horizontal_alignment = 2
 
-[node name="OpponentSprite" type="TextureRect" parent="Arena/OpponentPanel"]
+[node name="OpponentSprite" type="TextureRect" parent="MainVBox/ArenaSection/Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 148)
 size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 120)
 expand_mode = 1
-script = ExtResource("animated_portrait")
 stretch_mode = 5
+script = ExtResource("animated_portrait")
 
-[node name="OpponentHPBar" type="ProgressBar" parent="Arena/OpponentPanel"]
+[node name="OpponentHPBar" type="ProgressBar" parent="MainVBox/ArenaSection/Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 16)
@@ -231,13 +223,70 @@ show_percentage = false
 theme_override_styles/fill = SubResource("hp_fill")
 theme_override_styles/background = SubResource("hp_bg")
 
-[node name="OpponentHPLabel" type="Label" parent="Arena/OpponentPanel"]
+[node name="OpponentHPLabel" type="Label" parent="MainVBox/ArenaSection/Arena/OpponentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.45, 0.88, 0.48, 1)
 text = "HP: 80/80"
 horizontal_alignment = 2
+
+[node name="DashboardSection" type="HBoxContainer" parent="MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 3.0
+theme_override_constants/separation = 4
+
+[node name="LogPanel" type="PanelContainer" parent="MainVBox/DashboardSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+theme_override_styles/panel = SubResource("log_panel")
+
+[node name="CombatLog" type="RichTextLabel" parent="MainVBox/DashboardSection/LogPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "The fight begins!
+Squares up, weight shifts..."
+scroll_following = true
+
+[node name="ActionDeck" type="PanelContainer" parent="MainVBox/DashboardSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+theme_override_styles/panel = SubResource("action_panel")
+
+[node name="CenterContainer" type="CenterContainer" parent="MainVBox/DashboardSection/ActionDeck"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ActionLayout" type="VBoxContainer" parent="MainVBox/DashboardSection/ActionDeck/CenterContainer"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="ActionPhaseLabel" type="Label" parent="MainVBox/DashboardSection/ActionDeck/CenterContainer/ActionLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.82, 0.78, 0.62, 1)
+text = "SELECT ACTION 1"
+horizontal_alignment = 1
+
+[node name="ActionContainer" type="GridContainer" parent="MainVBox/DashboardSection/ActionDeck/CenterContainer/ActionLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
 
 [node name="ComboLabel" type="Label" parent="."]
 unique_name_in_owner = true
@@ -255,53 +304,5 @@ theme_override_colors/font_color = Color(0.9, 0.78, 0.3, 1)
 text = ""
 horizontal_alignment = 1
 
-[node name="BottomSection" type="HSplitContainer" parent="."]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.01
-anchor_top = 0.52
-anchor_right = 0.99
-anchor_bottom = 0.99
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="LogPanel" type="PanelContainer" parent="BottomSection"]
-layout_mode = 2
-custom_minimum_size = Vector2(380, 0)
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("log_panel")
-
-[node name="CombatLog" type="RichTextLabel" parent="BottomSection/LogPanel"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-bbcode_enabled = true
-text = "The fight begins!
-Squares up, weight shifts..."
-scroll_following = true
-
-[node name="ActionPanel" type="PanelContainer" parent="BottomSection"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("action_panel")
-
-[node name="ActionLayout" type="VBoxContainer" parent="BottomSection/ActionPanel"]
-layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 8
-
-[node name="ActionPhaseLabel" type="Label" parent="BottomSection/ActionPanel/ActionLayout"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.82, 0.78, 0.62, 1)
-text = "SELECT ACTION 1"
-horizontal_alignment = 1
-
-[node name="ActionContainer" type="GridContainer" parent="BottomSection/ActionPanel/ActionLayout"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 4
-columns = 2
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
+[node name="PuzzleLayer" type="CanvasLayer" parent="."]
+layer = 2

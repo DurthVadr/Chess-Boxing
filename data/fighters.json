@@ -6,7 +6,7 @@
     "hp": 110,
     "stamina": 100,
     "damage_mod": 1.05,
-    "attack_pattern": ["jab", "jab"],
+    "attack_pattern": ["jab", "jab", "jab"],
     "puzzle_time_bonus": 1.0,
     "puzzle_error_penalty": 1.8,
     "regen_per_turn": 1,

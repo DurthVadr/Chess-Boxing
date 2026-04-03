@@ -18,8 +18,7 @@ extends Control
 @onready var combo_label: Label = %ComboLabel
 @onready var action_phase_label: Label = %ActionPhaseLabel
 @onready var round_timer_label: Label = %RoundTimerLabel
-@onready var center_stage: Control = %CenterStage
-@onready var center_spacer: Control = %CenterSpacer
+@onready var puzzle_layer: CanvasLayer = $PuzzleLayer
 
 var combat_mgr: CombatManager
 var opponent_ai: OpponentAI
@@ -249,6 +248,10 @@ func _prepare_opponent_actions() -> void:
 # =============================================================================
 
 func _roll_player_actions() -> Array:
+	# Action patterns are fixed per character — Rookie always throws Jab x3.
+	var fighter_id: String = str(GameManager.player_fighter.get("id", "")).to_lower()
+	if fighter_id == "rookie":
+		return [BoxingAction.ActionType.JAB, BoxingAction.ActionType.JAB, BoxingAction.ActionType.JAB]
 	return GameManager.get_player_attack_pattern(3)
 
 func _on_start_attack_pressed() -> void:
@@ -383,8 +386,9 @@ func _execute_critical_hit_turn(
 	_update_ui()
 	_update_music_intensity()
 
-## Main turn: for each of 3 rounds, player attacks (puzzle → QTE bonus)
-## then opponent attacks (timing defense).
+## Main turn: ONE chess puzzle gates the whole combo.
+## Phase A — player throws all 3 actions consecutively (puzzle → 3× QTE → 3× damage).
+## Phase B — opponent retaliates with their 3 actions.
 func _execute_puzzle_turn(
 	player_actions: Array,
 	opp_actions: Array,
@@ -393,32 +397,36 @@ func _execute_puzzle_turn(
 	tactic_mods: Dictionary,
 ) -> void:
 	var all_actions := BoxingAction.create_all()
-	var step_results := []
+	var player_step_results := []
+	var opp_step_results := []
 	var total_dealt := 0
 	var total_taken := 0
 
+	# ── PHASE A: ONE puzzle gates the entire combo ──
+	var first_action: BoxingAction.ActionType = player_actions[0] if not player_actions.is_empty() else BoxingAction.ActionType.JAB
+	var first_act: BoxingAction = all_actions[first_action]
+	_add_to_log("[color=#6eaadc]You wind up %s x3![/color]" % first_act.name)
+	AudioManager.play_whoosh()
+
+	var puzzle_result: Dictionary = await _run_mini_puzzle()
+	var puzzle_solved: bool = puzzle_result.get("solved", false)
+	_record_round_puzzle_result(puzzle_result)
+	_show_heat()
+
+	# 3 consecutive player attacks — no opponent retaliation between them
 	for i in 3:
 		var p_action: BoxingAction.ActionType = player_actions[i] if i < player_actions.size() else BoxingAction.ActionType.JAB
-		var o_action: BoxingAction.ActionType = opp_actions[i] if i < opp_actions.size() else BoxingAction.ActionType.JAB
 		var p_act: BoxingAction = all_actions[p_action]
 
-		# ── PLAYER ATTACK: Puzzle → QTE bonus ──
-		_add_to_log("[color=#6eaadc]You wind up a %s! (%d/3)[/color]" % [p_act.name, i + 1])
+		_add_to_log("[color=#6eaadc]%s (%d/3)[/color]" % [p_act.name, i + 1])
 		AudioManager.play_whoosh()
 
-		# 1. Mini chess puzzle — determines if punch lands
-		var puzzle_result: Dictionary = await _run_mini_puzzle()
-		var puzzle_solved: bool = puzzle_result.get("solved", false)
-		_record_round_puzzle_result(puzzle_result)
-		_show_heat()
-
 		var qte_atk := "normal"
-		if puzzle_solved:
-			# 2. QTE for bonus damage modifier
+		if puzzle_solved or _should_force_qte_for_jab(p_action):
 			qte_atk = await _run_offensive_qte(p_action)
 
 		var r_atk := combat_mgr.resolve_player_attack(p_action, puzzle_solved, qte_atk, player_stats)
-		step_results.append(r_atk)
+		player_step_results.append(r_atk)
 		_apply_player_attack_damage(r_atk, puzzle_solved, qte_atk)
 		for msg in r_atk.messages:
 			_add_to_log(msg)
@@ -428,11 +436,16 @@ func _execute_puzzle_turn(
 		if _check_ko():
 			return
 
-		await get_tree().create_timer(0.35).timeout
+		if i < 2:
+			await get_tree().create_timer(0.2).timeout
 
-		# ── OPPONENT ATTACK: Timing defense ──
+	await get_tree().create_timer(0.4).timeout
+
+	# ── PHASE B: Opponent retaliates with all 3 actions ──
+	for i in 3:
+		var o_action: BoxingAction.ActionType = opp_actions[i] if i < opp_actions.size() else BoxingAction.ActionType.JAB
 		var opp_damage_result := await _run_opponent_attack(o_action, player_stats, opponent_stats)
-		step_results.append(opp_damage_result)
+		opp_step_results.append(opp_damage_result)
 		total_taken += opp_damage_result.get("damage", 0)
 
 		if _check_ko():
@@ -440,6 +453,12 @@ func _execute_puzzle_turn(
 
 		if i < 2:
 			await get_tree().create_timer(0.35).timeout
+
+	# Rebuild step_results in alternating order for _build_compat_result compatibility
+	var step_results := []
+	for i in 3:
+		step_results.append(player_step_results[i] if i < player_step_results.size() else {})
+		step_results.append(opp_step_results[i] if i < opp_step_results.size() else {})
 
 	# --- Zwischenzug: free JAB ---
 	if tactic_mods.free_interrupt_action != "":
@@ -495,6 +514,11 @@ func _execute_puzzle_turn(
 	_update_ui()
 	_update_music_intensity()
 
+func _should_force_qte_for_jab(action: BoxingAction.ActionType) -> bool:
+	if action != BoxingAction.ActionType.JAB:
+		return false
+	return str(GameManager.player_fighter.get("id", "")).to_lower() == "rookie"
+
 # =============================================================================
 # Puzzle & QTE Runners
 # =============================================================================
@@ -517,9 +541,11 @@ func _run_mini_puzzle() -> Dictionary:
 		puzzle_time = 0.25
 	var fighter_error_penalty := float(GameManager.player_fighter.get("puzzle_error_penalty", 2.0))
 
+	# MiniPuzzle lives on the CanvasLayer so it renders above all UI.
+	# It handles its own full-screen dim + centered panel internally.
 	var mini_puz := MiniPuzzle.new()
-	mini_puz.custom_minimum_size = Vector2(MiniPuzzle.SQ * 8 + 24, MiniPuzzle.SQ * 8 + 60)
-	_spawn_in_center_stage(mini_puz)
+	mini_puz.set_anchors_preset(Control.PRESET_FULL_RECT)
+	puzzle_layer.add_child(mini_puz)
 	AudioManager.play_qte_appear()
 	var result: Dictionary = await mini_puz.run(puzzle_data, puzzle_time, fighter_error_penalty)
 	mini_puz.queue_free()
@@ -636,15 +662,15 @@ func _run_convergence_qte() -> String:
 	qte.queue_free()
 	return result
 
-## Spawn a mini-game centered on CenterStage but parented to self (root).
-## Parenting to root keeps fullscreen overlays (dim, PRESET_FULL_RECT) and
-## mouse input working correctly across the whole viewport.
+## Spawn a QTE widget centered on screen, parented to self so it sits above
+## the layout but below the CanvasLayer puzzle popup.
 func _spawn_in_center_stage(node: Control) -> void:
 	var w := node.custom_minimum_size.x
 	var h := node.custom_minimum_size.y
+	var vp := get_viewport_rect().size
 	node.position = Vector2(
-		center_stage.global_position.x + (center_stage.size.x - w) * 0.5,
-		center_stage.global_position.y + (center_stage.size.y - h) * 0.5
+		(vp.x - w) * 0.5,
+		(vp.y - h) * 0.5,
 	)
 	node.z_index = 150
 	add_child(node)

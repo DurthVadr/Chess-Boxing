@@ -2,22 +2,8 @@
 
 [ext_resource type="Script" uid="uid://b7iuf36rcr52l" path="res://scenes/main_menu/main_menu.gd" id="1"]
 [ext_resource type="Theme" uid="uid://c0qkujurio6j0" path="res://assets/theme.tres" id="3"]
-
-[sub_resource type="StyleBoxFlat" id="btn_panel"]
-content_margin_left = 28.0
-content_margin_top = 22.0
-content_margin_right = 28.0
-content_margin_bottom = 22.0
-bg_color = Color(0, 0, 0, 0.5)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.9, 0.75, 0.25, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+[ext_resource type="Shader" path="res://assets/shaders/scrolling_bg.gdshader" id="4"]
+[ext_resource type="Shader" path="res://assets/shaders/title_gradient.gdshader" id="5"]
 
 [sub_resource type="StyleBoxFlat" id="menu_btn_normal"]
 content_margin_left = 20.0
@@ -70,6 +56,18 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_scroll"]
+shader = ExtResource("4")
+shader_parameter/speed = 0.04
+shader_parameter/cell_size = 0.055
+shader_parameter/color_a = Color(0.07, 0.05, 0.11, 0.7)
+shader_parameter/color_b = Color(0.04, 0.03, 0.07, 0.7)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_title"]
+shader = ExtResource("5")
+shader_parameter/top_color = Color(1.0, 0.98, 0.9, 1.0)
+shader_parameter/bottom_color = Color(0.9, 0.75, 0.25, 1.0)
+
 [node name="MainMenu" type="Control" unique_id=762640435]
 layout_mode = 3
 anchors_preset = 15
@@ -89,6 +87,16 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.05, 0.04, 0.08, 1)
 
+[node name="ScrollingBg" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+material = SubResource("ShaderMaterial_scroll")
+color = Color(1, 1, 1, 1)
+
 [node name="VBox" type="VBoxContainer" parent="." unique_id=352863820]
 layout_mode = 1
 anchors_preset = 8
@@ -107,7 +115,11 @@ theme_override_constants/separation = 10
 [node name="TitleLabel" type="Label" parent="VBox" unique_id=2145350273]
 unique_name_in_owner = true
 layout_mode = 2
+material = SubResource("ShaderMaterial_title")
 theme_override_colors/font_color = Color(0.97, 0.95, 0.88, 1)
+theme_override_colors/shadow_color = Color(0.0, 0.0, 0.0, 0.9)
+theme_override_constants/shadow_offset_x = 5
+theme_override_constants/shadow_offset_y = 6
 theme_override_font_sizes/font_size = 84
 text = "♚ CHESS BOXING ♛"
 horizontal_alignment = 1
@@ -125,16 +137,12 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 
-[node name="ButtonPanel" type="PanelContainer" parent="VBox" unique_id=1839365738]
+[node name="ButtonVBox" type="VBoxContainer" parent="VBox" unique_id=1805861116]
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_styles/panel = SubResource("btn_panel")
-
-[node name="ButtonVBox" type="VBoxContainer" parent="VBox/ButtonPanel" unique_id=1805861116]
-layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="NewRunBtn" type="Button" parent="VBox/ButtonPanel/ButtonVBox" unique_id=1222040645]
+[node name="NewRunBtn" type="Button" parent="VBox/ButtonVBox" unique_id=1222040645]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
@@ -149,7 +157,7 @@ theme_override_styles/hover = SubResource("menu_btn_hover")
 theme_override_styles/focus = SubResource("menu_btn_focus")
 text = "NEW RUN"
 
-[node name="SettingsBtn" type="Button" parent="VBox/ButtonPanel/ButtonVBox" unique_id=701892190]
+[node name="SettingsBtn" type="Button" parent="VBox/ButtonVBox" unique_id=701892190]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 50)
 layout_mode = 2
@@ -164,7 +172,7 @@ theme_override_styles/hover = SubResource("menu_btn_hover")
 theme_override_styles/focus = SubResource("menu_btn_focus")
 text = "SETTINGS"
 
-[node name="QuitBtn" type="Button" parent="VBox/ButtonPanel/ButtonVBox" unique_id=1844991641]
+[node name="QuitBtn" type="Button" parent="VBox/ButtonVBox" unique_id=1844991641]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 50)
 layout_mode = 2
@@ -178,6 +186,17 @@ theme_override_styles/pressed = SubResource("menu_btn_pressed")
 theme_override_styles/hover = SubResource("menu_btn_hover")
 theme_override_styles/focus = SubResource("menu_btn_focus")
 text = "QUIT"
+
+[node name="Cursor" type="Label" parent="." unique_id=388471092]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = -100.0
+offset_top = 0.0
+offset_right = -60.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.9, 0.75, 0.25, 1.0)
+theme_override_font_sizes/font_size = 28
+text = "►"
 
 [node name="VersionLabel" type="Label" parent="." unique_id=1363662229]
 layout_mode = 1

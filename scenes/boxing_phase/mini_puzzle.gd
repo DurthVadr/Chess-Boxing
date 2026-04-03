@@ -91,12 +91,14 @@ func _process(delta: float) -> void:
 		_resolve(false)
 
 func _build_ui() -> void:
-	# Dim screen behind popup
+	# Dim: starts transparent, tweens to 0.72 alpha so fighters fade into bg.
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.02, 0.04, 0.62)
+	dim.color = Color(0.02, 0.02, 0.04, 0.0)
 	dim.set_anchors_preset(PRESET_FULL_RECT)
 	dim.mouse_filter = MOUSE_FILTER_STOP
 	add_child(dim)
+	var dim_tw := dim.create_tween()
+	dim_tw.tween_property(dim, "color", Color(0.02, 0.02, 0.04, 0.72), 0.3)
 
 	# Centered popup panel
 	var center := CenterContainer.new()

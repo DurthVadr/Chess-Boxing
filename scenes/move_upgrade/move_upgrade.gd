@@ -303,4 +303,4 @@ func _on_confirm() -> void:
 
 
 func _proceed() -> void:
-	GameManager.change_phase(GameManager.GamePhase.PERK_DRAFT)
+	GameManager.change_phase(GameManager.GamePhase.SHOP)

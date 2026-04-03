@@ -391,7 +391,7 @@ func _win_fight() -> void:
 	if fight_order_complete and current_opponent_index >= fight_order.size():
 		end_run(true)
 	else:
-		change_phase(GamePhase.MOVE_UPGRADE)
+		change_phase(GamePhase.SHOP)
 
 func _lose_fight() -> void:
 	# Apply ELO change for the loss
@@ -670,25 +670,28 @@ func get_jab_damage_bonus() -> int:
 	return 3 if jab_upgraded else 0
 
 func get_player_attack_pattern(count: int = 3) -> Array:
-	var result: Array = []
+	# Action patterns are fixed per character — no reel randomness.
+	var fighter_id: String = str(player_fighter.get("id", "")).to_lower()
+
+	# Explicit Rookie guard — always Jab x3.
+	if fighter_id == "rookie":
+		var jabs: Array = []
+		for i in count:
+			jabs.append(BoxingAction.ActionType.JAB)
+		return jabs
+
+	# All other fighters use their attack_pattern from fighters.json.
 	var raw_pattern: Array = player_fighter.get("attack_pattern", [])
 	var converted: Array = []
-
 	for entry in raw_pattern:
-		var action := _attack_token_to_action(str(entry))
-		converted.append(action)
-
-	if converted.is_empty():
-		for reel in reel_symbols:
-			if reel is Array and not reel.is_empty():
-				converted.append(ReelSystem.random_symbol(reel))
+		converted.append(_attack_token_to_action(str(entry)))
 
 	if converted.is_empty():
 		converted = [BoxingAction.ActionType.JAB]
 
+	var result: Array = []
 	for i in count:
 		result.append(converted[i % converted.size()])
-
 	return result
 
 func _attack_token_to_action(token: String) -> BoxingAction.ActionType:
