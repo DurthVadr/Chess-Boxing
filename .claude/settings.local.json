@@ -25,7 +25,12 @@
       "Bash(rm frame_4.png)",
       "Bash(rm -f frame_6.png.import)",
       "Bash(python:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_sheet_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_idle.png\")",
+      "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_punch_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_punch.png\")",
+      "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_block_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_block.png\")",
+      "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_hitted_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_hitted.png\")",
+      "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_knockout_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_knockout.png\")"
     ]
   }
 }

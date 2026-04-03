@@ -81,10 +81,23 @@ func _ready() -> void:
 			var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
 			opponent_sprite.texture = load(tex_path)
 
-	# Load player idle animation from sprite sheet frames
+	# Load player sprite — use per-animation sheets if available, else fall back to folder frames
 	var player_sprite_base: String = GameManager.player_fighter.get("sprite_base", "rookie")
-	var anim_folder := "res://assets/sprites/fighters/%s_idle" % player_sprite_base
-	player_sprite.load_animation(anim_folder)
+	var sheets_base := "res://assets/sprites/fighters/%s/" % player_sprite_base
+	var idle_sheet := sheets_base + "%s_idle.png" % player_sprite_base
+	if ResourceLoader.exists(idle_sheet):
+		player_sprite.load_anim_sheet("idle",     idle_sheet,                               5, 2)
+		player_sprite.load_anim_sheet("punch",    sheets_base + "%s_punch.png"    % player_sprite_base, 5, 2)
+		player_sprite.load_anim_sheet("block",    sheets_base + "%s_block.png"    % player_sprite_base, 5, 2)
+		player_sprite.load_anim_sheet("hitted",   sheets_base + "%s_hitted.png"   % player_sprite_base, 5, 2)
+		player_sprite.load_anim_sheet("knockout", sheets_base + "%s_knockout.png" % player_sprite_base, 5, 2)
+		# Punch/block/hitted play fast so they finish within QTE timing windows
+		player_sprite.set_anim_fps("punch", 20.0)
+		player_sprite.set_anim_fps("block", 18.0)
+		player_sprite.set_anim_fps("hitted", 18.0)
+		player_sprite.set_anim_fps("knockout", 8.0)
+	else:
+		player_sprite.load_animation("res://assets/sprites/fighters/%s_idle" % player_sprite_base)
 
 	_update_ui()
 	_build_attack_controls()
@@ -227,13 +240,18 @@ func _on_play_tactic(index: int) -> void:
 	Juice.scale_bounce(action_container, 1.02, 0.15)
 
 func _prepare_opponent_actions() -> void:
+	var retaliation_count: int = GameManager.current_opponent.get("retaliation_count", 2)
 	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
 	var player_hp_pct := float(GameManager.player_hp) / float(GameManager.player_max_hp)
-	opponent_next_actions = opponent_ai.choose_actions(opp_hp_pct, 100, player_hp_pct)
-	# Opponent now also picks 3 actions — pad if AI only returns 2
-	if opponent_next_actions.size() < 3:
-		var extra := opponent_ai.choose_actions(opp_hp_pct, 100, player_hp_pct)
-		opponent_next_actions.append(extra[0] if not extra.is_empty() else BoxingAction.ActionType.JAB)
+
+	# Fill opponent_next_actions to exactly retaliation_count entries by
+	# batching AI calls (AI returns 2 at a time).
+	opponent_next_actions = []
+	while opponent_next_actions.size() < retaliation_count:
+		var batch := opponent_ai.choose_actions(opp_hp_pct, 100, player_hp_pct)
+		for action in batch:
+			if opponent_next_actions.size() < retaliation_count:
+				opponent_next_actions.append(action)
 
 	var telegraph_text := opponent_ai.get_telegraph_for_actions(opponent_next_actions)
 	_add_to_log("[color=#e89926]> %s[/color]" % telegraph_text)
@@ -423,6 +441,7 @@ func _execute_puzzle_turn(
 
 		var qte_atk := "normal"
 		if puzzle_solved or _should_force_qte_for_jab(p_action):
+			player_sprite.play_anim("punch", false)
 			qte_atk = await _run_offensive_qte(p_action)
 
 		var r_atk := combat_mgr.resolve_player_attack(p_action, puzzle_solved, qte_atk, player_stats)
@@ -441,9 +460,9 @@ func _execute_puzzle_turn(
 
 	await get_tree().create_timer(0.4).timeout
 
-	# ── PHASE B: Opponent retaliates with all 3 actions ──
-	for i in 3:
-		var o_action: BoxingAction.ActionType = opp_actions[i] if i < opp_actions.size() else BoxingAction.ActionType.JAB
+	# ── PHASE B: Opponent retaliates (count driven by retaliation_count in data) ──
+	for i in opp_actions.size():
+		var o_action: BoxingAction.ActionType = opp_actions[i]
 		var opp_damage_result := await _run_opponent_attack(o_action, player_stats, opponent_stats)
 		opp_step_results.append(opp_damage_result)
 		total_taken += opp_damage_result.get("damage", 0)
@@ -451,7 +470,7 @@ func _execute_puzzle_turn(
 		if _check_ko():
 			return
 
-		if i < 2:
+		if i < opp_actions.size() - 1:
 			await get_tree().create_timer(0.35).timeout
 
 	# Rebuild step_results in alternating order for _build_compat_result compatibility
@@ -592,6 +611,11 @@ func _run_opponent_attack(
 
 	var damage_mult: float = def_result.get("damage_multiplier", 1.0)
 	var block_qualities: Array = def_result.get("block_qualities", [])
+
+	if damage_mult <= 0.05:
+		player_sprite.play_anim("block", false)
+	else:
+		player_sprite.play_anim("hitted", false)
 
 	var r := combat_mgr.resolve_opponent_attack(opp_action, damage_mult, opponent_stats, player_stats)
 	_apply_opponent_attack_damage(r, block_qualities)
@@ -968,6 +992,10 @@ func _on_ko(winner: String) -> void:
 		Juice.screen_shake(self, 20.0, 0.5)
 		var ko_pos := player_sprite.global_position + player_sprite.size * 0.5
 		Juice.impact_burst(self, ko_pos, Color(0.9, 0.2, 0.2, 1.0), 80.0)
+		player_sprite.play_anim("knockout", false, func():
+			player_sprite.set_frame(9)
+			player_sprite.stop()
+		)
 		Juice.flash(player_sprite, Color(1, 0.2, 0.2), 0.3)
 
 	_set_actions_disabled(true)

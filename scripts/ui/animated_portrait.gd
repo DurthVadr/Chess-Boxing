@@ -7,8 +7,11 @@ extends TextureRect
 ##   2. Sprite sheet with named sequences (load_spritesheet)
 ## Drop-in replacement: keeps TextureRect type so Juice effects still work.
 
+signal anim_finished(anim_name: String)
+
 @export var fps: float = 10.0
 @export var idle_fps: float = 4.0
+@export var action_fps: float = 16.0
 @export var autoplay: bool = true
 
 var _frames: Array[Texture2D] = []
@@ -28,6 +31,12 @@ var _current_anim: String = "idle"
 var _anim_index: int = 0
 var _anim_looping: bool = true
 var _anim_finished_callback: Callable
+
+# Per-animation FPS overrides (optional)
+var _anim_fps: Dictionary = {}  # name -> float
+
+# Multi-sheet animations: each named anim can have its own atlas frame array
+var _anim_sheets: Dictionary = {}  # name -> Array[AtlasTexture]
 
 
 ## Load animation from a folder of frame_N.png images (original method)
@@ -151,26 +160,76 @@ func load_spritesheet(sheet_path: String, hframes: int = 4, vframes: int = 2) ->
 		play()
 
 
+## Load a named animation from its own sprite sheet (multi-sheet support).
+## Each call registers one animation (e.g. "punch", "block") from a separate file.
+## Call load_anim_sheet("idle", ...) first — that sheet becomes the starting texture.
+## hframes/vframes: grid layout. sequence: frame indices to play (default = all in order).
+func load_anim_sheet(anim_name: String, sheet_path: String, hframes: int = 5, vframes: int = 2, sequence: Array = []) -> void:
+	if not ResourceLoader.exists(sheet_path):
+		push_warning("AnimatedPortrait: Sheet not found: " + sheet_path)
+		return
+
+	var sheet_tex: Texture2D = load(sheet_path)
+	var frame_w := sheet_tex.get_width() / hframes
+	var frame_h := sheet_tex.get_height() / vframes
+	var total := hframes * vframes
+
+	var atlas_arr: Array[AtlasTexture] = []
+	for i in total:
+		var col := i % hframes
+		var row := i / hframes
+		var atlas := AtlasTexture.new()
+		atlas.atlas = sheet_tex
+		atlas.region = Rect2(col * frame_w, row * frame_h, frame_w, frame_h)
+		atlas_arr.append(atlas)
+
+	_anim_sheets[anim_name] = atlas_arr
+	if sequence.is_empty():
+		sequence = []
+		for i in total:
+			sequence.append(i)
+	_animations[anim_name] = sequence
+
+	# First sheet loaded becomes the active atlas + starting frame
+	if _atlas_frames.is_empty():
+		_atlas_frames = atlas_arr
+		texture = _atlas_frames[0]
+		_current_anim = anim_name
+		_anim_index = 0
+		if autoplay:
+			play()
+
+
 ## Set custom animation sequences. sequences is { "name": [frame_indices] }
 func set_animations(sequences: Dictionary) -> void:
 	_animations = sequences
 
 
 ## Play a named animation. If loop is false, plays once then returns to idle.
+## Calling play_anim while another is active cleanly interrupts the previous one.
 func play_anim(anim_name: String, loop: bool = true, on_finished: Callable = Callable()) -> void:
 	if not _animations.has(anim_name):
 		push_warning("AnimatedPortrait: Unknown animation: " + anim_name)
 		return
+	# Interrupt previous callback — the old animation is being cut short
+	_anim_finished_callback = Callable()
+	# Swap atlas to this animation's own sheet if it has one
+	if _anim_sheets.has(anim_name):
+		_atlas_frames = _anim_sheets[anim_name]
 	_current_anim = anim_name
 	_anim_index = 0
 	_anim_looping = loop
 	_anim_finished_callback = on_finished
 	_playing = true
 	_elapsed = 0.0
-	# Show first frame of the animation
 	var seq: Array = _animations[_current_anim]
 	if not seq.is_empty():
 		_show_atlas_or_folder_frame(seq[0])
+
+
+## Set a custom FPS for a specific animation (e.g. faster punch, slower KO).
+func set_anim_fps(anim_name: String, anim_fps: float) -> void:
+	_anim_fps[anim_name] = anim_fps
 
 
 ## Get frame 0 as a texture (for portraits/thumbnails)
@@ -245,7 +304,14 @@ func _process(delta: float) -> void:
 	# Sprite sheet with named animations
 	if not _atlas_frames.is_empty() and _animations.has(_current_anim):
 		_elapsed += delta
-		var active_fps := idle_fps if _current_anim == "idle" else fps
+		# FPS priority: per-anim override > idle_fps for "idle" > action_fps for actions
+		var active_fps: float
+		if _anim_fps.has(_current_anim):
+			active_fps = _anim_fps[_current_anim]
+		elif _current_anim == "idle":
+			active_fps = idle_fps
+		else:
+			active_fps = action_fps
 		var frame_time := 1.0 / active_fps
 		if _elapsed >= frame_time:
 			_elapsed -= frame_time
@@ -255,12 +321,16 @@ func _process(delta: float) -> void:
 				if _anim_looping:
 					_anim_index = 0
 				else:
-					# Animation finished — return to idle
+					# Animation finished — emit signal, call callback, return to idle
+					var finished_name := _current_anim
 					var cb := _anim_finished_callback
 					_anim_finished_callback = Callable()
 					_current_anim = "idle"
 					_anim_index = 0
 					_anim_looping = true
+					if _anim_sheets.has("idle"):
+						_atlas_frames = _anim_sheets["idle"]
+					anim_finished.emit(finished_name)
 					if cb.is_valid():
 						cb.call()
 					return
