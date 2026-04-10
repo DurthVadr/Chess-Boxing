@@ -67,27 +67,19 @@ func _ready() -> void:
 
 func run() -> String:
 	_cursor_x = 0.0
-	_active = false
+	_active = true
 	_resolved = false
-	_waiting = true
+	_waiting = false
 	_result = ""
 	_flash_timer = 0.0
 	_intro_timer = 0.0
-	_intro_scale = 0.0
+	_intro_scale = 1.0
 	set_process(true)
 	queue_redraw()
 	var result: String = await completed
 	return result
 
 func _process(delta: float) -> void:
-	if _waiting:
-		_intro_timer += delta
-		# Bounce-in: scale from 0 → overshoot → settle at 1.0
-		if _intro_scale < 1.0:
-			_intro_scale = minf(1.0, _intro_scale + delta * 4.5)
-		queue_redraw()
-		return
-
 	if _resolved:
 		_flash_timer -= delta
 		queue_redraw()
@@ -104,14 +96,6 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _waiting:
-		if event.is_action_pressed("ui_accept"):
-			get_viewport().set_input_as_handled()
-			_waiting = false
-			_active = true
-			queue_redraw()
-		return
-
 	if not _active or _resolved:
 		return
 	if event.is_action_pressed("ui_accept"):
@@ -142,20 +126,6 @@ func _draw() -> void:
 	if prompt_size > 0:
 		draw_string(ThemeDB.fallback_font, Vector2(ox, oy - 14), prompt_text,
 			HORIZONTAL_ALIGNMENT_CENTER, BAR_WIDTH, prompt_size, prompt_color)
-
-	# ── "Press to start" waiting state ──
-	if _waiting:
-		# Draw the bar preview (dimmed)
-		_draw_bar(ox, oy, 0.4)
-		# Pulsing "press SPACE" prompt
-		var pulse := 0.6 + 0.4 * sin(_intro_timer * 4.0)
-		var key_col := Color(READY_KEY_COLOR, pulse)
-		draw_string(ThemeDB.fallback_font, Vector2(ox, oy + BAR_HEIGHT + 24),
-			"► Press SPACE ◄", HORIZONTAL_ALIGNMENT_CENTER, BAR_WIDTH, 15, key_col)
-		# Subtle hint text
-		draw_string(ThemeDB.fallback_font, Vector2(ox, oy + BAR_HEIGHT + 44),
-			"Hit the gold zone!", HORIZONTAL_ALIGNMENT_CENTER, BAR_WIDTH, 11, READY_COLOR)
-		return
 
 	# ── Active / resolved bar ──
 	_draw_bar(ox, oy, 1.0)

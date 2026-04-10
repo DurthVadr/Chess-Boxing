@@ -1,41 +1,45 @@
 extends Control
 
-## The Corner — dual-shop screen between fights.
-## Left side: The Study (chess shop). Right side: The Gym (boxing shop).
-## Player spends shared Rep currency on tactic cards, stat upgrades,
-## intel, and services.
+## The Corner — perk shop between fights.
+## Player spends Rep currency to buy perk cards for their build.
 
-@onready var study_container: VBoxContainer = %StudyContainer
-@onready var gym_container: VBoxContainer = %GymContainer
+@onready var perk_shop_container: VBoxContainer = %PerkShopContainer
 @onready var rep_big_label: Label = %RepBigLabel
-@onready var hand_stat_label: Label = %HandStatLabel
-@onready var hp_stat_label: Label = %HpStatLabel
 @onready var perks_container: VBoxContainer = %PerksContainer
 @onready var continue_btn: Button = %ContinueBtn
 @onready var rep_breakdown_label: Label = %RepBreakdownLabel
 @onready var perk_removal_panel: PanelContainer = %PerkRemovalPanel
 
-var study_items: Array = []
-var gym_items: Array = []
+var shop_perks: Array = []  # Perk dicts offered this visit
 var _is_rebuilding_shop: bool = false
 
-const STUDY_COLOR := Color(0.3, 0.42, 0.68)   # Blue — chess
-const GYM_COLOR := Color(0.68, 0.3, 0.28)      # Red — boxing
 const GOLD := Color(0.9, 0.75, 0.3)
 const DISABLED_COLOR := Color(0.4, 0.4, 0.4)
+
+const RARITY_COLORS := {
+	"common": Color(0.75, 0.72, 0.65),
+	"rare": Color(0.42, 0.68, 0.92),
+	"epic": Color(0.78, 0.45, 0.92),
+	"unique": Color(0.9, 0.75, 0.3),
+}
+
+# Cost per rarity
+const RARITY_COST := {
+	"common": 2,
+	"rare": 4,
+	"epic": 6,
+	"unique": 8,
+}
 
 func _ready() -> void:
 	continue_btn.pressed.connect(_on_continue)
 	_wire_button_hover(continue_btn)
 
-	var inventory := GameManager.get_shop_inventory()
-	study_items = inventory.study
-	gym_items = inventory.gym
+	shop_perks = _generate_perk_offers()
 
 	_show_rep_breakdown()
 	_update_header()
-	_build_shop_column(study_container, study_items, "study")
-	_build_shop_column(gym_container, gym_items, "gym")
+	_build_perk_shop()
 	_update_perk_removal_panel()
 
 	Juice.fade_in(self, 0.4)
@@ -66,9 +70,6 @@ func _show_rep_breakdown() -> void:
 
 func _update_header() -> void:
 	rep_big_label.text = "%d" % GameManager.player_rep
-	var hand_count := GameManager.tactic_hand.size()
-	hand_stat_label.text = "%d / %d" % [hand_count, TacticCardSystem.MAX_HAND_SIZE]
-	hp_stat_label.text = "%d" % GameManager.player_max_hp
 	_build_perks_list()
 
 func _build_perks_list() -> void:
@@ -92,11 +93,7 @@ func _build_perks_list() -> void:
 		dot.text = "•"
 		dot.add_theme_font_size_override("font_size", 11)
 		var rarity: String = perk.get("rarity", "common")
-		var rarity_color := Color(0.75, 0.72, 0.65)
-		match rarity:
-			"rare":   rarity_color = Color(0.42, 0.68, 0.92)
-			"epic":   rarity_color = Color(0.78, 0.45, 0.92)
-			"unique": rarity_color = GOLD
+		var rarity_color: Color = RARITY_COLORS.get(rarity, RARITY_COLORS.common)
 		dot.add_theme_color_override("font_color", rarity_color)
 		row.add_child(dot)
 
@@ -124,132 +121,148 @@ func _build_perks_list() -> void:
 		perks_container.add_child(perk_panel)
 
 # =============================================================================
-# Shop Columns
+# Perk Shop
 # =============================================================================
 
-func _build_shop_column(container: VBoxContainer, items: Array, shop_type: String) -> void:
-	for child in container.get_children():
+func _generate_perk_offers() -> Array:
+	# Pull from the global perk pool, excluding perks the player already has
+	var owned_ids := {}
+	for p in GameManager.active_perks:
+		owned_ids[p.get("id", "")] = true
+
+	var pool: Array = []
+	for perk in GameManager.all_perks:
+		if owned_ids.has(perk.get("id", "")):
+			continue
+		# Respect unlock requirements
+		var req: String = perk.get("requires_unlock", "")
+		if req != "" and req not in SaveManager.unlocked_perks:
+			continue
+		pool.append(perk)
+
+	pool.shuffle()
+
+	# Offer 4 perks (mix of rarities weighted by fight progress)
+	var count := mini(4, pool.size())
+	return pool.slice(0, count)
+
+func _build_perk_shop() -> void:
+	for child in perk_shop_container.get_children():
 		child.queue_free()
 
-	if items.is_empty():
+	if shop_perks.is_empty():
 		var empty := Label.new()
-		empty.text = "Nothing available"
+		empty.text = "No perks available"
 		empty.add_theme_font_size_override("font_size", 13)
 		empty.add_theme_color_override("font_color", DISABLED_COLOR)
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		container.add_child(empty)
+		perk_shop_container.add_child(empty)
 		return
 
-	for i in items.size():
-		var item: Dictionary = items[i]
-		var card := _create_item_card(item, shop_type, i)
-		container.add_child(card)
+	for i in shop_perks.size():
+		var perk: Dictionary = shop_perks[i]
+		var card := _create_perk_card(perk, i)
+		perk_shop_container.add_child(card)
 
+		# Staggered fade-in
 		card.modulate.a = 0.0
 		var tween := create_tween()
 		tween.tween_property(card, "modulate:a", 1.0, 0.22).set_delay(0.06 + i * 0.08)
 
-func _create_item_card(item: Dictionary, shop_type: String, _index: int) -> PanelContainer:
+func _create_perk_card(perk: Dictionary, _index: int) -> PanelContainer:
 	var panel := PanelContainer.new()
+	var rarity: String = perk.get("rarity", "common")
+	var rarity_color: Color = RARITY_COLORS.get(rarity, RARITY_COLORS.common)
+	var cost: int = RARITY_COST.get(rarity, 3)
 
-	var base_color: Color = STUDY_COLOR if shop_type == "study" else GYM_COLOR
 	var style := StyleBoxFlat.new()
-	style.bg_color = base_color.darkened(0.62)
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
-	style.border_width_left = 1
-	style.border_width_right = 1
-	style.border_width_top = 1
-	style.border_width_bottom = 1
-	style.border_color = base_color.darkened(0.25)
+	style.bg_color = rarity_color.darkened(0.78)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.border_color = rarity_color.darkened(0.3)
 	style.content_margin_left = 16.0
 	style.content_margin_right = 16.0
-	style.content_margin_top = 12.0
-	style.content_margin_bottom = 12.0
+	style.content_margin_top = 14.0
+	style.content_margin_bottom = 14.0
 	panel.add_theme_stylebox_override("panel", style)
 
-	# Main row: [icon 32×32] | [info vbox EXPAND] | [cost vbox SHRINK]
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 10)
+	hbox.add_theme_constant_override("separation", 12)
 
-	# Icon — always shown; specific sprite or colored fallback
-	var category: String = item.get("category", "")
-	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(32, 32)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var art_path := ""
-	if category == "tactic_card":
-		art_path = "res://assets/sprites/cards/tactic_%s.png" % item.get("effect", "")
-	else:
-		art_path = "res://assets/sprites/shop/%s.png" % item.get("id", "")
-	if art_path != "" and ResourceLoader.exists(art_path):
-		art.texture = load(art_path)
-	else:
-		# Colored square fallback — keeps layout uniform
-		var img := Image.create(32, 32, false, Image.FORMAT_RGBA8)
-		img.fill(base_color.darkened(0.2))
-		art.texture = ImageTexture.create_from_image(img)
-	hbox.add_child(art)
+	# Tags column — small colored pills
+	var tags_vbox := VBoxContainer.new()
+	tags_vbox.add_theme_constant_override("separation", 2)
+	tags_vbox.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var tags: Array = perk.get("tags", [])
+	for tag in tags:
+		var tag_label := Label.new()
+		tag_label.text = str(tag).to_upper()
+		tag_label.add_theme_font_size_override("font_size", 8)
+		tag_label.add_theme_color_override("font_color", rarity_color.lightened(0.3))
+		tags_vbox.add_child(tag_label)
+	if tags.is_empty():
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(30, 0)
+		tags_vbox.add_child(spacer)
+	hbox.add_child(tags_vbox)
 
-	# Info vbox (left-aligned, expands)
+	# Info
 	var info_vbox := VBoxContainer.new()
-	info_vbox.add_theme_constant_override("separation", 2)
+	info_vbox.add_theme_constant_override("separation", 3)
 	info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var cat_label := Label.new()
-	cat_label.text = _category_display(category)
-	cat_label.add_theme_font_size_override("font_size", 10)
-	cat_label.add_theme_color_override("font_color", base_color.lightened(0.25))
-	info_vbox.add_child(cat_label)
+	var rarity_label := Label.new()
+	rarity_label.text = rarity.to_upper()
+	rarity_label.add_theme_font_size_override("font_size", 9)
+	rarity_label.add_theme_color_override("font_color", rarity_color.darkened(0.1))
+	info_vbox.add_child(rarity_label)
 
 	var name_label := Label.new()
-	name_label.text = item.get("name", "???")
-	name_label.add_theme_font_size_override("font_size", 18)
+	name_label.text = perk.get("name", "???")
+	name_label.add_theme_font_size_override("font_size", 20)
 	name_label.add_theme_color_override("font_color", Color(0.95, 0.92, 0.82))
 	name_label.clip_text = true
 	info_vbox.add_child(name_label)
 
 	var desc_label := Label.new()
-	desc_label.text = item.get("description", "")
+	desc_label.text = perk.get("description", "")
 	desc_label.add_theme_font_size_override("font_size", 12)
 	desc_label.add_theme_color_override("font_color", Color(0.62, 0.62, 0.60))
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info_vbox.add_child(desc_label)
 
-	# Cap info for stat upgrades
-	if category == "stat_upgrade":
-		var cap_text: String = item.get("cap_description", "")
-		var times_bought: int = GameManager.shop_purchase_counts.get(item.get("id", ""), 0)
-		var max_p: int = item.get("max_purchases", 99)
-		if cap_text != "":
-			var cap_label := Label.new()
-			cap_label.text = "(%d/%d) %s" % [times_bought, max_p, cap_text]
-			cap_label.add_theme_font_size_override("font_size", 8)
-			cap_label.add_theme_color_override("font_color", Color(0.55, 0.50, 0.38))
-			info_vbox.add_child(cap_label)
+	# Heat-scaled indicator
+	if perk.get("heat_scaled", false):
+		var heat_label := Label.new()
+		heat_label.text = "🔥 Heat-scaled"
+		heat_label.add_theme_font_size_override("font_size", 9)
+		heat_label.add_theme_color_override("font_color", Color(0.9, 0.5, 0.2, 0.7))
+		info_vbox.add_child(heat_label)
 
 	hbox.add_child(info_vbox)
 
-	# Cost vbox (right-aligned, shrinks)
+	# Cost
 	var cost_vbox := VBoxContainer.new()
 	cost_vbox.add_theme_constant_override("separation", 0)
 	cost_vbox.size_flags_horizontal = Control.SIZE_SHRINK_END
 	cost_vbox.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	var cost_label := Label.new()
-	cost_label.text = "%d" % item.get("cost", 0)
-	cost_label.add_theme_font_size_override("font_size", 18)
+	cost_label.text = "%d" % cost
+	cost_label.add_theme_font_size_override("font_size", 22)
 	cost_label.add_theme_color_override("font_color", GOLD)
 	cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	cost_vbox.add_child(cost_label)
 
 	var rep_caption := Label.new()
 	rep_caption.text = "REP"
-	rep_caption.add_theme_font_size_override("font_size", 7)
+	rep_caption.add_theme_font_size_override("font_size", 8)
 	rep_caption.add_theme_color_override("font_color", Color(0.55, 0.50, 0.28, 0.80))
 	rep_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	cost_vbox.add_child(rep_caption)
@@ -257,7 +270,7 @@ func _create_item_card(item: Dictionary, shop_type: String, _index: int) -> Pane
 	hbox.add_child(cost_vbox)
 	panel.add_child(hbox)
 
-	# Invisible buy button over the whole card
+	# Buy button overlay
 	var buy_btn := Button.new()
 	buy_btn.flat = true
 	buy_btn.anchors_preset = Control.PRESET_FULL_RECT
@@ -283,25 +296,16 @@ func _create_item_card(item: Dictionary, shop_type: String, _index: int) -> Pane
 			(s as StyleBoxFlat).border_color = base_border_color
 	)
 
-	var check := ShopSystem.can_purchase(item, GameManager.player_rep, GameManager.tactic_hand, GameManager.shop_purchase_counts)
-	if check.allowed:
-		buy_btn.pressed.connect(_on_buy_item.bind(item, shop_type))
-		buy_btn.tooltip_text = "Buy for %d Rep" % item.get("cost", 0)
+	if GameManager.player_rep >= cost:
+		buy_btn.pressed.connect(_on_buy_perk.bind(perk, cost))
+		buy_btn.tooltip_text = "Buy for %d Rep" % cost
 	else:
 		buy_btn.disabled = true
-		buy_btn.tooltip_text = check.reason
+		buy_btn.tooltip_text = "Not enough Rep (%d/%d)" % [GameManager.player_rep, cost]
 		panel.modulate = Color(0.5, 0.5, 0.5)
 
 	panel.add_child(buy_btn)
 	return panel
-
-func _category_display(category: String) -> String:
-	match category:
-		"tactic_card": return "TACTIC CARD"
-		"stat_upgrade": return "TRAINING"
-		"intel": return "INTEL"
-		"service": return "SERVICE"
-	return category.to_upper()
 
 func _wire_button_hover(btn: Button) -> void:
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -319,31 +323,34 @@ func _wire_button_hover(btn: Button) -> void:
 # Purchase
 # =============================================================================
 
-func _on_buy_item(item: Dictionary, _unused_shop_type: String) -> void:
+func _on_buy_perk(perk: Dictionary, cost: int) -> void:
 	if _is_rebuilding_shop:
 		return
-
-	var result := GameManager.purchase_shop_item(item)
-	if not result.success:
+	if GameManager.player_rep < cost:
 		AudioManager.play_error()
 		return
+
+	# Check if already owned (shouldn't happen, but guard)
+	for p in GameManager.active_perks:
+		if p.get("id", "") == perk.get("id", ""):
+			AudioManager.play_error()
+			return
+
+	GameManager.player_rep -= cost
+	GameManager.add_perk(perk)
+
 	AudioManager.play_shop_buy()
 	Juice.screen_flash(self, Color(0.9, 0.85, 0.3, 0.15), 0.15)
 
+	# Remove from offers
+	shop_perks.erase(perk)
+
 	_is_rebuilding_shop = true
-
 	_update_header()
+	call_deferred("_rebuild_shop")
 
-	call_deferred("_rebuild_shop_after_purchase")
-
-	Juice.scale_bounce(continue_btn, 1.05, 0.15)
-
-func _rebuild_shop_after_purchase() -> void:
-	var inventory := GameManager.get_shop_inventory()
-	study_items = inventory.study
-	gym_items = inventory.gym
-	_build_shop_column(study_container, study_items, "study")
-	_build_shop_column(gym_container, gym_items, "gym")
+func _rebuild_shop() -> void:
+	_build_perk_shop()
 	_update_perk_removal_panel()
 	_is_rebuilding_shop = false
 
@@ -393,6 +400,7 @@ func _update_perk_removal_panel() -> void:
 
 func _on_remove_perk(index: int) -> void:
 	GameManager.remove_perk(index)
+	_update_header()
 	_update_perk_removal_panel()
 
 # =============================================================================

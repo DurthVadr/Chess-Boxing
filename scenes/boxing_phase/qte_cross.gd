@@ -61,26 +61,19 @@ func _ready() -> void:
 func run() -> String:
 	_h_cursor = 0.0
 	_v_cursor = 0.0
-	_active = false
+	_active = true
 	_resolved = false
-	_waiting = true
+	_waiting = false
 	_result = ""
 	_flash_timer = 0.0
 	_intro_timer = 0.0
-	_intro_scale = 0.0
+	_intro_scale = 1.0
 	set_process(true)
 	queue_redraw()
 	var result: String = await completed
 	return result
 
 func _process(delta: float) -> void:
-	if _waiting:
-		_intro_timer += delta
-		if _intro_scale < 1.0:
-			_intro_scale = minf(1.0, _intro_scale + delta * 4.5)
-		queue_redraw()
-		return
-
 	if _resolved:
 		_flash_timer -= delta
 		queue_redraw()
@@ -99,14 +92,6 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _waiting:
-		if event.is_action_pressed("ui_accept"):
-			get_viewport().set_input_as_handled()
-			_waiting = false
-			_active = true
-			queue_redraw()
-		return
-
 	if not _active or _resolved:
 		return
 	if event.is_action_pressed("ui_accept"):
@@ -146,17 +131,6 @@ func _draw() -> void:
 	if ps > 0:
 		draw_string(ThemeDB.fallback_font, Vector2(0, cy - ARM_LENGTH - 20), prompt_text,
 			HORIZONTAL_ALIGNMENT_CENTER, size.x, ps, prompt_color)
-
-	# ── Waiting state ──
-	if _waiting:
-		_draw_cross_shape(cx, cy, 0.4)
-		var pulse := 0.6 + 0.4 * sin(_intro_timer * 4.0)
-		var key_col := Color(READY_KEY, pulse)
-		draw_string(ThemeDB.fallback_font, Vector2(0, cy + ARM_LENGTH + 24),
-			"► Press SPACE ◄", HORIZONTAL_ALIGNMENT_CENTER, size.x, 15, key_col)
-		draw_string(ThemeDB.fallback_font, Vector2(0, cy + ARM_LENGTH + 44),
-			"Hit the center!", HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, READY_HINT)
-		return
 
 	# ── Active / resolved cross ──
 	_draw_cross_shape(cx, cy, 1.0)

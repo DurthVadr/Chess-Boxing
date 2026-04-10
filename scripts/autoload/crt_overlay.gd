@@ -9,21 +9,25 @@ var _intensity: float = 1.0  # 0.0–1.0 multiplier for all CRT shader params
 
 const CRT_SHADER_PATH := "res://assets/shaders/crt.gdshader"
 const PARTICLE_SHADER_PATH := "res://assets/shaders/particles.gdshader"
-
 # Default shader values at full intensity (1.0)
 const DEFAULTS := {
-	"scanline_intensity": 0.10,
-	"vignette_intensity": 0.25,
-	"aberration_amount": 0.7,
-	"curvature": 6.5,
+	"scanline_intensity": 0.11,
+	"vignette_intensity": 0.26,
+	"aberration_amount": 0.85,
+	"curvature": 6.0,
 	"grain_amount": 0.035,
-	"bloom_amount": 0.06,
+	"bloom_amount": 0.10,
 	"flicker_amount": 0.006,
-	"phosphor_strength": 0.12,
+	"phosphor_strength": 0.13,
+	# Psychedelic additions (subtle)
+	"scanline_warp": 1.8,
+	"fisheye": 0.06,
+	"bloom_glow": 0.2,
+	"color_bleed": 0.25,
 }
 # These don't scale — they stay constant
 const FIXED := {
-	"brightness": 1.03,
+	"brightness": 1.04,
 }
 
 func _ready() -> void:

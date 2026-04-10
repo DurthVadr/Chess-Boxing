@@ -290,6 +290,99 @@ static func afterimage(parent: Control, source: CanvasItem, color: Color = Color
 		tween.tween_property(ghost, "modulate:a", 0.0, 0.4).set_delay(spacing * i)
 		tween.tween_callback(ghost.queue_free)
 
+## Confetti burst — falling colored rectangles celebrating a win.
+## intensity: 1–6 (more pieces + staggered follow-up waves at 3+).
+## chain_waves: when false, only this wave (used for staggered bursts).
+static func confetti(parent: Control, intensity: int = 1, chain_waves: bool = true) -> void:
+	if not is_instance_valid(parent):
+		return
+	var lv := clampi(intensity, 1, 6)
+	var counts: Array = [32, 50, 72, 100, 130, 165]
+	var count: int = counts[lv - 1]
+	var palette: Array[Color] = [
+		Color(0.9, 0.78, 0.3),   # gold
+		Color(0.35, 0.82, 0.45), # green
+		Color(0.40, 0.65, 1.0),  # blue
+		Color(0.95, 0.38, 0.38), # red
+		Color(0.78, 0.42, 0.95), # purple
+		Color(1.0,  0.92, 0.38), # yellow
+		Color(0.95, 0.95, 0.95), # white
+		Color(0.35, 0.92, 0.88), # cyan
+		Color(1.0, 0.55, 0.35),  # orange
+		Color(0.55, 0.95, 0.55), # mint
+	]
+	var vp := parent.get_viewport_rect().size
+	for i in count:
+		var piece := ColorRect.new()
+		if lv >= 4:
+			piece.size = Vector2(randf_range(7.0, 18.0), randf_range(5.0, 11.0))
+		else:
+			piece.size = Vector2(randf_range(6.0, 15.0), randf_range(4.0, 9.0))
+		piece.color = palette[randi() % palette.size()]
+		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		piece.z_index = 210
+		var sx := randf_range(-40.0, vp.x + 40.0)
+		piece.position = Vector2(sx, randf_range(-80.0, -6.0))
+		piece.pivot_offset = piece.size / 2.0
+		piece.rotation = randf_range(0.0, TAU)
+		parent.add_child(piece)
+
+		var delay := randf_range(0.0, 0.95)
+		var fall_t := randf_range(1.15, 2.75)
+		var wind := sin(float(i) * 0.37 + randf() * 2.2) * 48.0
+		var end_pos := Vector2(sx + randf_range(-120.0, 120.0) + wind, vp.y + 40.0)
+		var end_rot := piece.rotation + randf_range(-PI * 5.0, PI * 5.0)
+
+		var tw := piece.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(piece, "position", end_pos, fall_t).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(piece, "rotation", end_rot, fall_t).set_delay(delay)
+		tw.tween_property(piece, "modulate:a", 0.0, fall_t * 0.5).set_delay(delay + fall_t * 0.55)
+		tw.set_parallel(false)
+		tw.tween_callback(piece.queue_free)
+
+	if not chain_waves:
+		return
+	var seq := parent.create_tween()
+	if lv >= 3:
+		seq.tween_interval(0.4)
+		seq.tween_callback(func() -> void: Juice.confetti(parent, clampi(lv - 2, 1, 5), false))
+	if lv >= 5:
+		seq.tween_interval(0.5)
+		seq.tween_callback(func() -> void: Juice.confetti(parent, clampi(lv - 3, 1, 4), false))
+
+
+## Big centered stamp — pops in then fades (fight win / celebration).
+static func victory_banner(parent: Control, text: String = "WINNER!") -> void:
+	if not is_instance_valid(parent):
+		return
+	var vp := parent.get_viewport_rect().size
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 52)
+	lbl.add_theme_color_override("font_color", Color(0.94, 0.82, 0.32))
+	lbl.add_theme_color_override("font_outline_color", Color(0.06, 0.04, 0.12))
+	lbl.add_theme_constant_override("outline_size", 8)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.z_index = 400
+	lbl.custom_minimum_size = Vector2(mini(vp.x - 40.0, 720.0), 88.0)
+	lbl.position = Vector2((vp.x - lbl.custom_minimum_size.x) * 0.5, vp.y * 0.16)
+	lbl.pivot_offset = lbl.custom_minimum_size * 0.5
+	lbl.scale = Vector2(1.45, 1.45)
+	lbl.modulate.a = 0.0
+	parent.add_child(lbl)
+
+	var tw := lbl.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(lbl, "modulate:a", 1.0, 0.12)
+	tw.tween_property(lbl, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.set_parallel(false)
+	tw.tween_interval(0.95)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(lbl.queue_free)
+
 ## KO slow-motion effect
 static func ko_slowmo(tree: SceneTree, duration: float = 1.0) -> void:
 	Engine.time_scale = 0.3

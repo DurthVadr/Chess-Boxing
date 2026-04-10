@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="FocusBreathCard" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/training/cards/focus_breath_card.gd" id="1_k6y1u"]
+
+[resource]
+script = ExtResource("1_k6y1u")
+id = "focus_breath"
+card_name = "Focus Breath"
+description = "Once per run, pause pressure damage for 3 seconds."
+cost = 5
+

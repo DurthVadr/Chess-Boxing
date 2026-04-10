@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Puzzle Editor</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+</head>
+<body>
+
+  <!-- LEFT: Puzzle list -->
+  <aside class="left-panel">
+    <h1>Puzzle Editor</h1>
+
+    <div class="row">
+      <label>Fight</label>
+      <select id="fightFilter"></select>
+    </div>
+
+    <div class="row">
+      <label>Pool</label>
+      <select id="poolSelect">
+        <option value="easy">Easy (1-2)</option>
+        <option value="medium">Medium (3-4)</option>
+        <option value="hard">Hard (5+)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label>Search</label>
+      <input id="searchInput" type="text" placeholder="id, description, or theme" />
+    </div>
+
+    <div class="toolbar">
+      <button id="newBtn" class="secondary">New</button>
+      <button id="duplicateBtn" class="secondary">Dup</button>
+      <button id="deleteBtn" class="danger">Delete</button>
+    </div>
+
+    <div class="toolbar">
+      <button id="reloadBtn" class="secondary">Reload</button>
+      <button id="savePoolBtn" class="primary">Save Pool</button>
+    </div>
+
+    <div id="status" class="status">Loading...</div>
+
+    <div id="listHeader" class="list-header"></div>
+    <div id="puzzleList" class="puzzle-list"></div>
+  </aside>
+
+  <!-- CENTER: Board -->
+  <section class="board-panel" id="boardPanel">
+    <div class="board-topbar">
+      <span id="puzzleTitle" class="puzzle-title">No puzzle selected</span>
+      <div class="board-actions">
+        <button id="flipBtn" class="secondary small" title="Flip board [F]">Flip</button>
+        <button id="recordBtn" class="secondary small" title="Click pieces to record moves [R]">Record</button>
+        <button id="validateBtn" class="secondary small" title="Validate puzzle">Validate</button>
+      </div>
+    </div>
+
+    <div class="board-with-coords">
+      <div id="rankLabels" class="rank-labels"></div>
+      <div class="board-col">
+        <div id="board" class="board"></div>
+        <div id="fileLabels" class="file-labels"></div>
+      </div>
+    </div>
+
+    <div id="boardMeta" class="board-meta">No puzzle selected.</div>
+
+    <div id="moveList" class="move-list"></div>
+
+    <div class="toolbar top-gap">
+      <button id="resetPreviewBtn" class="secondary">&#9654;&#9654; Reset</button>
+      <button id="prevMoveBtn" class="secondary">&#9664; Prev</button>
+      <button id="nextMoveBtn" class="secondary">Next &#9654;</button>
+      <span class="shortcut-hint">&#8592;/&#8594; keys</span>
+    </div>
+  </section>
+
+  <!-- RIGHT: Form -->
+  <aside class="form-panel">
+    <h2>Puzzle Data</h2>
+    <div class="form-grid">
+      <label>ID</label>
+      <input id="idInput" type="text" />
+
+      <label>FEN</label>
+      <div class="fen-row">
+        <input id="fenInput" type="text" />
+        <button id="copyFenBtn" class="secondary tiny" title="Copy FEN">&#10064;</button>
+      </div>
+
+      <label>Solution</label>
+      <textarea id="solutionInput" rows="2" placeholder="e2e4 e7e5 ..."></textarea>
+
+      <label>Themes</label>
+      <input id="themesInput" type="text" placeholder="fork, pin, tactical" />
+
+      <label>Description</label>
+      <textarea id="descriptionInput" rows="2"></textarea>
+
+      <label>Difficulty</label>
+      <input id="difficultyInput" type="number" min="1" max="10" />
+
+      <label>Source</label>
+      <input id="sourceInput" type="text" />
+    </div>
+
+    <div class="shortcut-help">
+      <strong>Shortcuts:</strong>
+      &#8592;/&#8594; move steps &middot; F flip &middot; R record &middot; Ctrl+S save &middot; Esc deselect
+    </div>
+  </aside>
+
+  <script src="/app.js"></script>
+</body>
+</html>

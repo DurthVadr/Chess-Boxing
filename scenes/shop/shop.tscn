@@ -4,10 +4,10 @@
 [ext_resource type="Theme" path="res://assets/theme.tres" id="2"]
 
 [sub_resource type="StyleBoxFlat" id="build_panel"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
+content_margin_left = 14.0
+content_margin_top = 14.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
 bg_color = Color(0.07, 0.05, 0.10, 1)
 border_width_left = 1
 border_width_top = 1
@@ -132,6 +132,25 @@ theme_override_colors/font_color = Color(0.6, 0.6, 0.55, 0.55)
 text = ""
 horizontal_alignment = 1
 
+[node name="RepRow" type="HBoxContainer" parent="MainMargin/MainVBox/HeaderArea"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="RepBigLabel" type="Label" parent="MainMargin/MainVBox/HeaderArea/RepRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+theme_override_colors/font_color = Color(0.92, 0.80, 0.28, 1)
+text = "0"
+
+[node name="RepCaption" type="Label" parent="MainMargin/MainVBox/HeaderArea/RepRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.55, 0.50, 0.30, 0.80)
+text = "REP"
+vertical_alignment = 1
+
 [node name="ColumnsRow" type="HBoxContainer" parent="MainMargin/MainVBox"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -152,66 +171,9 @@ theme_override_styles/panel = SubResource("build_panel")
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="RepBigLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 40
-theme_override_colors/font_color = Color(0.92, 0.80, 0.28, 1)
-text = "0"
-horizontal_alignment = 1
-
-[node name="RepCaption" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 9
-theme_override_colors/font_color = Color(0.55, 0.50, 0.30, 0.80)
-text = "REP"
-horizontal_alignment = 1
-
-[node name="HSep1" type="HSeparator" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
-layout_mode = 2
-modulate = Color(0.4, 0.35, 0.55, 0.5)
-
-[node name="StatsGrid" type="GridContainer" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
-layout_mode = 2
-columns = 2
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 4
-
-[node name="HandKey" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(0.55, 0.55, 0.60, 0.80)
-text = "CARDS"
-
-[node name="HandStatLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(0.88, 0.85, 0.78, 1)
-text = "0 / 3"
-horizontal_alignment = 2
-
-[node name="HpKey" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(0.55, 0.55, 0.60, 0.80)
-text = "MAX HP"
-
-[node name="HpStatLabel" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox/StatsGrid"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(0.88, 0.85, 0.78, 1)
-text = "100"
-horizontal_alignment = 2
-
-[node name="HSep2" type="HSeparator" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
-layout_mode = 2
-modulate = Color(0.4, 0.35, 0.55, 0.5)
-
 [node name="PerksHeader" type="Label" parent="MainMargin/MainVBox/ColumnsRow/LeftColumn/BuildPanel/BuildVBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.50, 0.30, 0.80)
 text = "ACTIVE PERKS"
 horizontal_alignment = 1
@@ -229,62 +191,32 @@ theme_override_constants/separation = 4
 [node name="CenterColumn" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.5
-theme_override_constants/separation = 6
+size_flags_stretch_ratio = 2.5
+theme_override_constants/separation = 8
 
-[node name="StudyHeader" type="Label" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
+[node name="PerkShopHeader" type="Label" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.38, 0.54, 0.82, 1)
-text = "THE STUDY"
+theme_override_colors/font_color = Color(0.9, 0.78, 0.35, 1)
+text = "PERK SHOP"
 horizontal_alignment = 1
 
-[node name="StudySubtitle" type="Label" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
+[node name="PerkShopSubtitle" type="Label" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 9
-theme_override_colors/font_color = Color(0.40, 0.46, 0.58, 0.70)
-text = "Chess training & tactic cards"
+theme_override_colors/font_color = Color(0.55, 0.50, 0.38, 0.70)
+text = "Spend Rep to add perks to your build"
 horizontal_alignment = 1
 
-[node name="StudyScroll" type="ScrollContainer" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
+[node name="PerkShopScroll" type="ScrollContainer" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StudyContainer" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn/StudyScroll"]
+[node name="PerkShopContainer" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow/CenterColumn/PerkShopScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="RightColumn" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.5
-theme_override_constants/separation = 6
-
-[node name="GymHeader" type="Label" parent="MainMargin/MainVBox/ColumnsRow/RightColumn"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.80, 0.36, 0.32, 1)
-text = "THE GYM"
-horizontal_alignment = 1
-
-[node name="GymSubtitle" type="Label" parent="MainMargin/MainVBox/ColumnsRow/RightColumn"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 9
-theme_override_colors/font_color = Color(0.58, 0.40, 0.38, 0.70)
-text = "Boxing training & power-ups"
-horizontal_alignment = 1
-
-[node name="GymScroll" type="ScrollContainer" parent="MainMargin/MainVBox/ColumnsRow/RightColumn"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="GymContainer" type="VBoxContainer" parent="MainMargin/MainVBox/ColumnsRow/RightColumn/GymScroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
 
 [node name="PerkRemovalPanel" type="PanelContainer" parent="MainMargin/MainVBox"]
 unique_name_in_owner = true

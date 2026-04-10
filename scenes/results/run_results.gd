@@ -19,8 +19,15 @@ func _ready() -> void:
 		result_label.text = "CHAMPION!"
 		result_label.add_theme_color_override("font_color", Color(0.9, 0.78, 0.3))
 		AudioManager.play_victory()
-		Juice.screen_flash(self, Color(0.9, 0.8, 0.2, 0.25), 0.3)
-		Juice.screen_shake(self, 8.0, 0.3)
+		Juice.screen_flash(self, Color(0.92, 0.78, 0.22, 0.3), 0.32)
+		Juice.screen_shake(self, 11.0, 0.38)
+		Juice.confetti(self, 6)
+		var tw_celebrate := create_tween()
+		tw_celebrate.tween_interval(0.36)
+		tw_celebrate.tween_callback(func() -> void:
+			Juice.screen_flash(self, Color(0.45, 0.55, 0.98, 0.14), 0.22)
+			Juice.confetti(self, 3, false)
+		)
 		# Show "Next Tournament" button only on victory
 		next_tournament_btn.visible = true
 	else:

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="HeavyHandsCard" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/training/cards/heavy_hands_card.gd" id="1_4xq2f"]
+
+[resource]
+script = ExtResource("1_4xq2f")
+id = "heavy_hands"
+card_name = "Heavy Hands"
+description = "If your last chess move used a Queen or Rook, your next boxing damage is doubled."
+cost = 6
+

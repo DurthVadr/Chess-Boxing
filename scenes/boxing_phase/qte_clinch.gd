@@ -56,26 +56,19 @@ func run() -> String:
 	_fill = 0.5
 	_time_remaining = TIME_LIMIT
 	_last_dir = ""
-	_active = false
+	_active = true
 	_resolved = false
-	_waiting = true
+	_waiting = false
 	_result = ""
 	_flash_timer = 0.0
 	_intro_timer = 0.0
-	_intro_scale = 0.0
+	_intro_scale = 1.0
 	set_process(true)
 	queue_redraw()
 	var result: String = await completed
 	return result
 
 func _process(delta: float) -> void:
-	if _waiting:
-		_intro_timer += delta
-		if _intro_scale < 1.0:
-			_intro_scale = minf(1.0, _intro_scale + delta * 4.5)
-		queue_redraw()
-		return
-
 	if _resolved:
 		_flash_timer -= delta
 		queue_redraw()
@@ -96,20 +89,6 @@ func _process(delta: float) -> void:
 		_resolve("clinch_lost")
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _waiting:
-		if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
-			get_viewport().set_input_as_handled()
-			_waiting = false
-			_active = true
-			# Process the first press
-			if event.is_action_pressed("ui_left"):
-				_last_dir = "left"
-			else:
-				_last_dir = "right"
-			_fill = minf(1.0, _fill + PUSH_AMOUNT)
-			queue_redraw()
-		return
-
 	if not _active or _resolved:
 		return
 
@@ -213,14 +192,6 @@ func _draw() -> void:
 		var hint_color := Color(0.7, 0.65, 0.50, 0.8 * pulse)
 		draw_string(ThemeDB.fallback_font, Vector2(0, hint_y), "◄  ►",
 			HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, hint_color)
-
-	# ── Waiting state ──
-	if _waiting:
-		var pulse := 0.6 + 0.4 * sin(_intro_timer * 4.0)
-		draw_string(ThemeDB.fallback_font, Vector2(0, meter_y + METER_HEIGHT + 22),
-			"► Press ◄ or ► ◄", HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, Color(READY_KEY, pulse))
-		draw_string(ThemeDB.fallback_font, Vector2(0, meter_y + METER_HEIGHT + 40),
-			"Mash to fill the meter!", HORIZONTAL_ALIGNMENT_CENTER, size.x, 10, READY_HINT)
 
 	# Result text
 	if _resolved and _flash_timer > 0.0:

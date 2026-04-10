@@ -1,0 +1,114 @@
+{
+  "portraits": {
+    "rookie": "res://assets/sprites/fighters/rookie_neutral.png",
+    "mentor": "res://assets/sprites/fighters/mentor_neutral.png",
+    "dev":    "res://assets/sprites/npc/dev_happy.png",
+    "magnus": "res://assets/sprites/opponents/magnus_neutral.png",
+    "system": "res://assets/sprites/ui/system_icon.png"
+  },
+
+  "stage_1": {
+    "title": "THE SETUP",
+    "location": "The Rookie's Messy Bedroom — 3 AM",
+    "bg_color": "#0A0812",
+    "accent_color": "#1A0E28",
+    "lines": [
+      {"speaker": "",       "text": "[color=#666666][i]A glowing CRT monitor illuminates a messy bedroom. Empty energy drink cans everywhere.[/i][/color]"},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Knight to E5. Checkmate. Too easy...\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Another grandmaster down. Time for a nap.\""},
+      {"speaker": "",       "text": "[color=#666666][i]The door violently kicks open. Mentor steps in.[/i][/color]"},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Wake up, kid! The screen is rotting your brain!\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Whoa! How did you get in my room?!\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"You've got a 2200 ELO but the arms of a wet noodle.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"I'm entering you in the Underground Chessboxing League.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Chess... boxing? No thanks, I bruise easily.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Prize pool is $50,000.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"...Where are my gloves?\""}
+    ]
+  },
+
+  "stage_2": {
+    "title": "THE DEV CAMEO",
+    "location": "Underground Locker Room",
+    "bg_color": "#080C14",
+    "accent_color": "#0E1A24",
+    "lines": [
+      {"speaker": "",       "text": "[color=#666666][i]The Rookie nervously adjusts his boxing gloves. Mentor gives a pep talk.[/i][/color]"},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Alright kid. This is it. Keep your guard up and your king safe.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"My stomach is doing flips...\""},
+      {"speaker": "",       "text": "[color=#666666][i]Suddenly, two guys in hoodies walk into the room smiling brightly.[/i][/color]"},
+      {"speaker": "dev",    "text": "[color=#8DE56E][b]THE DEVS[/b][/color]   \"Hey! Thanks so much for playing our indie game!\""},
+      {"speaker": "dev",    "text": "[color=#8DE56E][b]THE DEVS[/b][/color]   \"We worked really hard on this chessboxing mechanic.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Uh. Who are these guys?\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Hey! You're in the wrong room, pals! Get outta here!\""},
+      {"speaker": "dev",    "text": "[color=#8DE56E][b]THE DEVS[/b][/color]   \"Oops. Sorry! Please leave a review on Steam!\""},
+      {"speaker": "",       "text": "[color=#666666][i]The Devs scurry out of the room.[/i][/color]"},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"...Weirdos. Anyway.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Go out there and do everything you can, son.\""}
+    ]
+  },
+
+  "stage_3": {
+    "title": "FIRST BLOOD",
+    "location": "Arena Hallway",
+    "bg_color": "#0D0508",
+    "accent_color": "#200A10",
+    "lines": [
+      {"speaker": "system", "text": "[color=#CCCCCC][b][ SYSTEM: ELO POINTS INCREASED +45 ][/b][/color]"},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Pant... pant... I think I swallowed my mouthguard.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Ha! You caught him in a fork and a right hook!\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Look at the board. Your ELO is rising.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Yeah... Not bad. Maybe I won't die today.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Don't get cocky. The real fighters are up next.\""}
+    ]
+  },
+
+  "stage_4": {
+    "title": "THE RIVAL",
+    "location": "Press Conference Room",
+    "bg_color": "#0D0A02",
+    "accent_color": "#1A1404",
+    "lines": [
+      {"speaker": "",       "text": "[color=#666666][i]Camera flashes go off. Magnus blocks the doorway, towering over The Rookie.[/i][/color]"},
+      {"speaker": "magnus", "text": "[color=#DC6E6E][b]MAGNUS[/b][/color]   \"So. You're the kid from the internet.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"...Hi.\""},
+      {"speaker": "magnus", "text": "[color=#DC6E6E][b]MAGNUS[/b][/color]   \"Online games are cute. But in the ring, you actually bleed.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Save the tough guy act for the finals, Magnus.\""},
+      {"speaker": "magnus", "text": "[color=#DC6E6E][b]MAGNUS[/b][/color]   \"Just don't get knocked out before you reach me.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Coach... I think I'm gonna throw up.\""}
+    ]
+  },
+
+  "stage_5": {
+    "title": "THE FINALS",
+    "location": "The Tunnel",
+    "bg_color": "#080C14",
+    "accent_color": "#0E1A24",
+    "lines": [
+      {"speaker": "",       "text": "[color=#666666][i]The crowd is roaring outside. The championship match is about to begin.[/i][/color]"},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Listen to that crowd. They want blood.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Magnus is flawless on the board. And he hits like a truck.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"He's a machine, yes. But machines run on logic.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"You are unpredictable. You play like a cornered animal.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Thanks. I think.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Survive the boxing. Confuse him in the chess. Let's go!\""}
+    ]
+  },
+
+  "stage_6": {
+    "title": "THE CHAMPION",
+    "location": "The Ring",
+    "bg_color": "#0D0A02",
+    "accent_color": "#1A1404",
+    "lines": [
+      {"speaker": "system", "text": "[color=#CCCCCC][b][ SYSTEM: ELO RATING — GRANDMASTER ][/b][/color]"},
+      {"speaker": "",       "text": "[color=#666666][i]Confetti rains down. Magnus is staring at the chessboard in pure shock.[/i][/color]"},
+      {"speaker": "magnus", "text": "[color=#DC6E6E][b]MAGNUS[/b][/color]   \"Impossible... a discovered attack? While concussed?\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"I told you... there's no undo button, Magnus.\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"You did it! You're the champion!\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Does this mean I get the fifty grand now?\""},
+      {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"It sure does, kid. You earned it.\""},
+      {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Great. I'm going to buy a new graphics card. And sleep for a week.\""}
+    ]
+  }
+}

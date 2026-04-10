@@ -30,7 +30,17 @@
       "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_punch_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_punch.png\")",
       "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_block_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_block.png\")",
       "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_hitted_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_hitted.png\")",
-      "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_knockout_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_knockout.png\")"
+      "Bash(cp \"C:/gamedev/chessbox/rookie/Rookie_knockout_tr.png\" \"C:/Proj/Chess-Boxing/assets/sprites/fighters/rookie/rookie_knockout.png\")",
+      "mcp__godot__get_project_info",
+      "Bash(grep -E \"\\\\.\\(gd|tscn\\)$\")",
+      "Bash(find:*)",
+      "WebFetch(domain:lichess.org)",
+      "WebFetch(domain:database.lichess.org)",
+      "Bash(pip show:*)",
+      "mcp__godot__run_project",
+      "mcp__godot__get_debug_output",
+      "mcp__godot__stop_project",
+      "Bash(curl -s http://127.0.0.1:8765/)"
     ]
   }
 }

@@ -26,12 +26,16 @@ var is_player_turn: bool = true
 var round_over: bool = false
 var turn_count: int = 0
 var second_wind_used: bool = false
-var round_time_remaining: float = 180.0
+var round_time_remaining: float = 30.0
 
 var opponent_next_actions: Array = []
 
 # Execution state
 var _executing: bool = false
+
+# Dev — F12 instant KO while puzzles / defense QTE are open
+var _debug_force_ko_win: bool = false
+var _debug_force_ko_lose: bool = false
 
 # Tactic card state for this turn
 var tactic_played_this_turn: bool = false
@@ -50,6 +54,14 @@ var _round_puzzle_solve_time: float = 0.0
 var _round_puzzle_time_limit: float = 0.0
 var _round_puzzle_attempts: int = 0
 
+const PIECE_TO_PUNCH_ANIM := {
+	"P": "LightPunch",
+	"N": "LightPunch",
+	"B": "HeavyPunch",
+	"R": "HeavyPunch",
+	"Q": "SpecialUppercut",
+}
+
 func _process(delta: float) -> void:
 	if round_over:
 		return
@@ -66,7 +78,7 @@ func _ready() -> void:
 	opponent_ai.setup_telegraphs(GameManager.current_opponent.get("id", ""))
 
 	combo_label.text = ""
-	action_phase_label.text = "PRESS ATTACK TO START"
+	action_phase_label.text = ""
 
 	var sprite_sheet: String = GameManager.current_opponent.get("sprite_sheet", "")
 	if sprite_sheet != "":
@@ -100,6 +112,7 @@ func _ready() -> void:
 		player_sprite.load_animation("res://assets/sprites/fighters/%s_idle" % player_sprite_base)
 
 	_update_ui()
+	_setup_punch_animation_aliases()
 	_build_attack_controls()
 	_build_tactic_hand()
 	_show_heat()
@@ -108,27 +121,82 @@ func _ready() -> void:
 
 	_add_to_log("[color=#c9b38f]Round %d — FIGHT![/color]" % (GameManager.current_round_in_fight + 1))
 
+	_setup_psychedelic_visuals()
+
 	AudioManager.play_round_bell()
 	Juice.fade_in(self, 0.3)
 	Juice.screen_shake(self, 6.0, 0.2)
+
+	# Auto-start the first exchange after a brief intro delay
+	_auto_start_exchange.call_deferred()
 
 func _show_heat() -> void:
 	var current_heat := GameManager.get_heat()
 	bonus_label.text = HeatSystem.get_heat_text(current_heat)
 	bonus_label.add_theme_color_override("font_color", HeatSystem.get_heat_color(current_heat))
 
+func _setup_psychedelic_visuals() -> void:
+	# 1. Swirling lava-lamp background
+	var bg_node: ColorRect = $Background
+	var bg_shader := load("res://assets/shaders/psychedelic_bg.gdshader") as Shader
+	if bg_shader and bg_node:
+		var mat := ShaderMaterial.new()
+		mat.shader = bg_shader
+		mat.set_shader_parameter("brightness", 0.15)
+		mat.set_shader_parameter("speed", 0.06)
+		bg_node.material = mat
+
+	# 2. Sprite psychedelic shader (aura + chromatic aberration + ghost trail)
+	var sprite_shader := load("res://assets/shaders/sprite_psychedelic.gdshader") as Shader
+	if sprite_shader:
+		if player_sprite:
+			var pmat := ShaderMaterial.new()
+			pmat.shader = sprite_shader
+			pmat.set_shader_parameter("aura_size", 0.012)
+			pmat.set_shader_parameter("aura_intensity", 0.6)
+			pmat.set_shader_parameter("aberration_amount", 0.003)
+			pmat.set_shader_parameter("ghost_count", 2.0)
+			pmat.set_shader_parameter("ghost_opacity", 0.12)
+			player_sprite.material = pmat
+		if opponent_sprite:
+			var omat := ShaderMaterial.new()
+			omat.shader = sprite_shader
+			omat.set_shader_parameter("aura_size", 0.012)
+			omat.set_shader_parameter("aura_intensity", 0.6)
+			omat.set_shader_parameter("aberration_amount", 0.003)
+			omat.set_shader_parameter("ghost_count", 2.0)
+			omat.set_shader_parameter("ghost_opacity", 0.12)
+			opponent_sprite.material = omat
+
+	# 3. Rainbow HP bars
+	var bar_shader := load("res://assets/shaders/rainbow_bar.gdshader") as Shader
+	if bar_shader:
+		var pbar_mat := ShaderMaterial.new()
+		pbar_mat.shader = bar_shader
+		player_hp_bar.material = pbar_mat
+		var obar_mat := ShaderMaterial.new()
+		obar_mat.shader = bar_shader
+		opponent_hp_bar.material = obar_mat
+
+	# 4. Neon text on key labels
+	var text_shader := load("res://assets/shaders/neon_text.gdshader") as Shader
+	if text_shader:
+		for label in [action_phase_label, combo_label, bonus_label]:
+			if label:
+				var tmat := ShaderMaterial.new()
+				tmat.shader = text_shader
+				tmat.set_shader_parameter("neon_color", Color(0.9, 0.2, 1.0, 1.0))
+				tmat.set_shader_parameter("glow_intensity", 1.0)
+				tmat.set_shader_parameter("glow_radius", 0.006)
+				tmat.set_shader_parameter("pulse_speed", 1.0)
+				tmat.set_shader_parameter("pulse_amount", 0.1)
+				tmat.set_shader_parameter("rainbow_mode", true)
+				label.material = tmat
+
 func _build_attack_controls() -> void:
-	# Clear old action buttons
+	# Clear old action buttons — no manual button needed, exchanges auto-start
 	for child in action_container.get_children():
 		child.queue_free()
-
-	action_container.columns = 1
-	var attack_btn := Button.new()
-	attack_btn.text = "START ATTACK EXCHANGE"
-	attack_btn.custom_minimum_size = Vector2(300, 52)
-	attack_btn.disabled = (not is_player_turn) or round_over or _executing
-	attack_btn.pressed.connect(_on_start_attack_pressed)
-	action_container.add_child(attack_btn)
 
 func _build_tactic_hand() -> void:
 	var tactic_container: HBoxContainer = get_node_or_null("%TacticHandContainer")
@@ -272,6 +340,20 @@ func _roll_player_actions() -> Array:
 		return [BoxingAction.ActionType.JAB, BoxingAction.ActionType.JAB, BoxingAction.ActionType.JAB]
 	return GameManager.get_player_attack_pattern(3)
 
+func _setup_punch_animation_aliases() -> void:
+	# Ensure the requested Training Camp punch animation names exist, even if
+	# the current fighter spritesheets only define "punch".
+	if not player_sprite or not player_sprite._animations.has("punch"):
+		return
+	for alias in ["LightPunch", "HeavyPunch", "SpecialUppercut"]:
+		if not player_sprite._animations.has(alias):
+			player_sprite._animations[alias] = player_sprite._animations["punch"]
+
+func _auto_start_exchange() -> void:
+	if round_over or _executing:
+		return
+	_on_start_attack_pressed()
+
 func _on_start_attack_pressed() -> void:
 	if round_over or _executing:
 		return
@@ -281,22 +363,8 @@ func _on_start_attack_pressed() -> void:
 	turn_count += 1
 	_build_attack_controls()
 
-	var player_actions: Array = _roll_player_actions()
-	opponent_ai.record_player_actions(player_actions)
-
-	var all_actions := BoxingAction.create_all()
-	var rolled_names: Array[String] = []
-	for action_type in player_actions:
-		var act: BoxingAction = all_actions[action_type]
-		rolled_names.append(act.name)
-	_add_to_log("[color=#c9b38f]Your combo: %s[/color]" % " - ".join(rolled_names))
-
-	# Check for critical hit (triple match)
-	var is_triple := ReelSystem.is_triple(player_actions)
-	if is_triple:
-		combo_label.text = "TRIPLE RHYTHM!"
-		combo_label.add_theme_color_override("font_color", GOLD)
-		Juice.punch_text(combo_label)
+	# No manual Jab/Uppercut selection; attacks are driven by validated chess moves.
+	opponent_ai.record_player_actions([])  # keep AI informed but actionless
 
 	# Resolve tactic modifiers
 	var opp_hp_pct := float(GameManager.opponent_hp) / float(GameManager.opponent_max_hp)
@@ -327,7 +395,10 @@ func _on_start_attack_pressed() -> void:
 	action_phase_label.text = ""
 
 	# --- EXECUTE ---
-	await _execute_puzzle_turn(player_actions, opponent_next_actions, player_stats, opponent_stats, tactic_mods)
+	await _execute_piece_punch_turn(opponent_next_actions, player_stats, opponent_stats, tactic_mods)
+
+	if round_over:
+		return
 
 	_executing = false
 
@@ -351,8 +422,10 @@ func _on_start_attack_pressed() -> void:
 	_build_tactic_hand()
 	_prepare_opponent_actions()
 	is_player_turn = true
-	action_phase_label.text = "PRESS ATTACK TO START"
 	_build_attack_controls()
+
+	# Auto-start next exchange
+	_auto_start_exchange()
 
 # =============================================================================
 # Sequential Turn Execution
@@ -404,49 +477,46 @@ func _execute_critical_hit_turn(
 	_update_ui()
 	_update_music_intensity()
 
-## Main turn: ONE chess puzzle gates the whole combo.
-## Phase A — player throws all 3 actions consecutively (puzzle → 3× QTE → 3× damage).
-## Phase B — opponent retaliates with their 3 actions.
-func _execute_puzzle_turn(
-	player_actions: Array,
+## Main turn:
+## Phase A — player solves 3 mini-puzzles; each validated move becomes a punch type.
+## Phase B — opponent retaliates.
+func _execute_piece_punch_turn(
 	opp_actions: Array,
 	player_stats: Dictionary,
 	opponent_stats: Dictionary,
 	tactic_mods: Dictionary,
 ) -> void:
-	var all_actions := BoxingAction.create_all()
+	if round_over:
+		return
+
 	var player_step_results := []
 	var opp_step_results := []
 	var total_dealt := 0
 	var total_taken := 0
 
-	# ── PHASE A: ONE puzzle gates the entire combo ──
-	var first_action: BoxingAction.ActionType = player_actions[0] if not player_actions.is_empty() else BoxingAction.ActionType.JAB
-	var first_act: BoxingAction = all_actions[first_action]
-	_add_to_log("[color=#6eaadc]You wind up %s x3![/color]" % first_act.name)
-	AudioManager.play_whoosh()
-
-	var puzzle_result: Dictionary = await _run_mini_puzzle()
-	var puzzle_solved: bool = puzzle_result.get("solved", false)
-	_record_round_puzzle_result(puzzle_result)
-	_show_heat()
-
-	# 3 consecutive player attacks — no opponent retaliation between them
+	# ── PHASE A: 3 mini puzzles → 3 punches ──
+	_flash_phase_announce("YOUR MOVE!", Color(0.35, 0.72, 0.45))
+	await get_tree().create_timer(0.7).timeout
+	if round_over or _debug_consume_force_ko():
+		return
+	_add_to_log("[color=#6eaadc]Solve 3 moves to land 3 punches![/color]")
 	for i in 3:
-		var p_action: BoxingAction.ActionType = player_actions[i] if i < player_actions.size() else BoxingAction.ActionType.JAB
-		var p_act: BoxingAction = all_actions[p_action]
-
-		_add_to_log("[color=#6eaadc]%s (%d/3)[/color]" % [p_act.name, i + 1])
+		if round_over or _debug_consume_force_ko():
+			return
 		AudioManager.play_whoosh()
+		var puzzle_result: Dictionary = await _run_mini_puzzle()
+		if round_over or _debug_consume_force_ko():
+			return
+		var puzzle_solved: bool = puzzle_result.get("solved", false)
+		_record_round_puzzle_result(puzzle_result)
+		_show_heat()
 
-		var qte_atk := "normal"
-		if puzzle_solved or _should_force_qte_for_jab(p_action):
-			player_sprite.play_anim("punch", false)
-			qte_atk = await _run_offensive_qte(p_action)
+		var moved_piece: String = str(puzzle_result.get("moved_piece", "")).to_upper()
+		GameManager.set_last_chess_piece_moved(moved_piece)
 
-		var r_atk := combat_mgr.resolve_player_attack(p_action, puzzle_solved, qte_atk, player_stats)
+		var r_atk := combat_mgr.resolve_player_attack_from_piece(moved_piece, puzzle_solved, player_stats)
 		player_step_results.append(r_atk)
-		_apply_player_attack_damage(r_atk, puzzle_solved, qte_atk)
+		_apply_piece_punch_damage(r_atk, puzzle_solved)
 		for msg in r_atk.messages:
 			_add_to_log(msg)
 
@@ -456,14 +526,28 @@ func _execute_puzzle_turn(
 			return
 
 		if i < 2:
-			await get_tree().create_timer(0.2).timeout
+			await get_tree().create_timer(0.35).timeout
+			if round_over or _debug_consume_force_ko():
+				return
 
-	await get_tree().create_timer(0.4).timeout
+	# Transition announcement before opponent retaliation
+	await get_tree().create_timer(0.3).timeout
+	if round_over or _debug_consume_force_ko():
+		return
+	var opp_name: String = GameManager.current_opponent.get("name", "Opponent")
+	_flash_phase_announce("%s STRIKES BACK!" % opp_name.to_upper(), Color(0.82, 0.28, 0.22))
+	await get_tree().create_timer(0.9).timeout
+	if round_over or _debug_consume_force_ko():
+		return
 
 	# ── PHASE B: Opponent retaliates (count driven by retaliation_count in data) ──
 	for i in opp_actions.size():
+		if round_over or _debug_consume_force_ko():
+			return
 		var o_action: BoxingAction.ActionType = opp_actions[i]
 		var opp_damage_result := await _run_opponent_attack(o_action, player_stats, opponent_stats)
+		if round_over or _debug_consume_force_ko():
+			return
 		opp_step_results.append(opp_damage_result)
 		total_taken += opp_damage_result.get("damage", 0)
 
@@ -471,7 +555,9 @@ func _execute_puzzle_turn(
 			return
 
 		if i < opp_actions.size() - 1:
-			await get_tree().create_timer(0.35).timeout
+			await get_tree().create_timer(0.6).timeout
+			if round_over or _debug_consume_force_ko():
+				return
 
 	# Rebuild step_results in alternating order for _build_compat_result compatibility
 	var step_results := []
@@ -533,16 +619,45 @@ func _execute_puzzle_turn(
 	_update_ui()
 	_update_music_intensity()
 
-func _should_force_qte_for_jab(action: BoxingAction.ActionType) -> bool:
-	if action != BoxingAction.ActionType.JAB:
-		return false
-	return str(GameManager.player_fighter.get("id", "")).to_lower() == "rookie"
+func _apply_piece_punch_damage(result: Dictionary, puzzle_solved: bool) -> void:
+	if not puzzle_solved:
+		AudioManager.play_miss()
+		_update_ui()
+		return
+
+	var damage: int = int(result.get("damage", 0))
+	var piece: String = str(result.get("moved_piece", "")).to_upper()
+	var anim := str(result.get("punch_anim", PIECE_TO_PUNCH_ANIM.get(piece, "LightPunch")))
+
+	if player_sprite and player_sprite._animations.has(anim):
+		player_sprite.play_anim(anim, false)
+	else:
+		player_sprite.play_anim("punch", false)
+
+	GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - damage)
+	AudioManager.play_punch("jab", damage >= 18)
+
+	var heat := GameManager.get_heat()
+	var is_heated := heat >= 2.5
+	var hit_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
+
+	Juice.hit_lunge(player_sprite, 1.0, 15.0, 0.18)
+	Juice.screen_shake(opponent_sprite, 8.0, 0.16)
+	Juice.flash(opponent_sprite, Color(1, 0.3, 0.3), 0.15)
+	CRTOverlay.punch_impact(0.6)
+	Juice.damage_popup(self, damage, opponent_sprite.global_position + Vector2(60, 0), is_heated)
+	Juice.impact_burst(self, hit_pos, Color(1.0, 0.9, 0.3, 0.85), 45.0)
+	Juice.bar_punch(opponent_hp_bar)
+	_update_ui()
+
+func _should_force_qte_for_jab(_action: BoxingAction.ActionType) -> bool:
+	return false
 
 # =============================================================================
-# Puzzle & QTE Runners
+# Puzzle Runner
 # =============================================================================
 
-## Mini chess puzzle — player must solve to land their punch.
+## Mini chess puzzle — player must solve moves to land punches.
 func _run_mini_puzzle() -> Dictionary:
 	var puzzle_data := GameManager.get_mini_puzzle()
 	var puzzle_time := 12.0
@@ -570,20 +685,8 @@ func _run_mini_puzzle() -> Dictionary:
 	mini_puz.queue_free()
 	return result
 
-## Offensive QTE: bonus modifier after puzzle solve.
-## JAB → Pendulum, CROSS → Cross QTE, UPPERCUT → Convergence.
-func _run_offensive_qte(action: BoxingAction.ActionType) -> String:
-	var result: String
-	match action:
-		BoxingAction.ActionType.JAB:
-			result = await _run_pendulum_qte()
-		BoxingAction.ActionType.CROSS:
-			result = await _run_cross_qte()
-		BoxingAction.ActionType.UPPERCUT:
-			result = await _run_convergence_qte()
-		_:
-			result = await _run_pendulum_qte()
-	return result
+func _run_offensive_qte(_action: BoxingAction.ActionType) -> String:
+	return "normal"
 
 ## Opponent attack with timing-based defense.
 ## Returns a result dict with final damage dealt.
@@ -600,10 +703,21 @@ func _run_opponent_attack(
 	_add_to_log("[color=#d96050]%s throws %s! (%d hits)[/color]" % [
 		GameManager.current_opponent.get("name", "Opponent"), o_act.name, punch_count])
 
+	# Telegraph: opponent windup animation + brief warning flash
+	opponent_sprite.play_anim("punch", false)
+	_flash_phase_announce("INCOMING %s!" % o_act.name.to_upper(), Color(0.82, 0.28, 0.22))
+	await get_tree().create_timer(0.65).timeout
+
 	var defense_qte := QTETimingDefense.new()
 	defense_qte.prompt_text = "BLOCK %s!" % o_act.name.to_upper()
 	defense_qte.prompt_color = Color(0.32, 0.52, 0.82)
-	defense_qte.custom_minimum_size = Vector2(320, 160)
+	# Scale scroll speed with opponent difficulty for escalating challenge
+	var difficulty: int = int(GameManager.current_opponent.get("chess_difficulty", 1))
+	defense_qte.scroll_speed = QTETimingDefense.BASE_SCROLL_SPEED + (difficulty - 1) * 25.0
+	# Pre-set size so _spawn_in_center_stage can position it correctly.
+	var lane_w := QTETimingDefense.LANE_COUNT * QTETimingDefense.LANE_WIDTH \
+		+ (QTETimingDefense.LANE_COUNT - 1) * QTETimingDefense.LANE_GAP + 40.0
+	defense_qte.custom_minimum_size = Vector2(lane_w, QTETimingDefense.WIDGET_HEIGHT)
 	_spawn_in_center_stage(defense_qte)
 	AudioManager.play_qte_appear()
 	var def_result: Dictionary = await defense_qte.run(punch_count)
@@ -700,6 +814,27 @@ func _spawn_in_center_stage(node: Control) -> void:
 	add_child(node)
 
 ## Floating result text popup above the QTE.
+## Flash a centered phase announcement label (e.g. "YOUR MOVE!", "BRACE!").
+## Fades in quickly, holds, then fades out. Non-blocking — caller awaits separately.
+func _flash_phase_announce(text: String, color: Color) -> void:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 32)
+	label.add_theme_color_override("font_color", color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.z_index = 100
+	label.modulate.a = 0.0
+	add_child(label)
+
+	var tw := label.create_tween()
+	tw.tween_property(label, "modulate:a", 1.0, 0.15)
+	tw.tween_interval(0.45)
+	tw.tween_property(label, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(label.queue_free)
+
 func _spawn_qte_result_popup(result: String, pos: Vector2) -> void:
 	var label := Label.new()
 	var text := ""
@@ -987,6 +1122,17 @@ func _on_ko(winner: String) -> void:
 		var ko_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
 		Juice.impact_burst(self, ko_pos, Color(1.0, 0.85, 0.2, 1.0), 80.0)
 		Juice.flash(opponent_sprite, Color(1, 0.2, 0.2), 0.3)
+		# Escalating confetti: intensity 2–6 across the bracket + banner / gold flash / CRT bump
+		var confetti_level: int = clampi(GameManager.current_opponent_index + 2, 2, 6)
+		Juice.confetti(self, confetti_level)
+		Juice.victory_banner(self, "WINNER!")
+		Juice.scale_bounce(player_sprite, 1.12, 0.45)
+		var tw_celebrate := create_tween()
+		tw_celebrate.tween_interval(0.12)
+		tw_celebrate.tween_callback(func() -> void:
+			Juice.screen_flash(self, Color(0.92, 0.78, 0.28, 0.2), 0.22)
+			CRTOverlay.punch_impact(0.55)
+		)
 	else:
 		_add_to_log("[color=red]KO! You've been knocked out![/color]")
 		Juice.screen_shake(self, 20.0, 0.5)
@@ -1023,3 +1169,53 @@ func _end_boxing_round() -> void:
 	await get_tree().create_timer(1.5).timeout
 	_finalize_round_puzzle_stats()
 	GameManager.advance_fight_round()
+
+
+# =============================================================================
+# Debug / Playtesting
+# =============================================================================
+
+func _abort_dev_overlays() -> void:
+	if puzzle_layer:
+		for c in puzzle_layer.get_children():
+			if c is MiniPuzzle:
+				(c as MiniPuzzle).debug_force_complete()
+	for c in get_children():
+		if c is QTETimingDefense:
+			(c as QTETimingDefense).debug_force_complete()
+
+func _debug_consume_force_ko() -> bool:
+	if _debug_force_ko_win:
+		_debug_force_ko_win = false
+		GameManager.opponent_hp = 0
+		_on_ko("player")
+		return true
+	if _debug_force_ko_lose:
+		_debug_force_ko_lose = false
+		GameManager.player_hp = 0
+		_on_ko("opponent")
+		return true
+	return false
+
+func _debug_try_finish_forced_ko() -> void:
+	if round_over:
+		return
+	_debug_consume_force_ko()
+
+func debug_instant_win() -> void:
+	if round_over:
+		return
+	_debug_force_ko_win = true
+	_debug_force_ko_lose = false
+	DialogueManager.force_close()
+	_abort_dev_overlays()
+	call_deferred("_debug_try_finish_forced_ko")
+
+func debug_instant_lose() -> void:
+	if round_over:
+		return
+	_debug_force_ko_lose = true
+	_debug_force_ko_win = false
+	DialogueManager.force_close()
+	_abort_dev_overlays()
+	call_deferred("_debug_try_finish_forced_ko")

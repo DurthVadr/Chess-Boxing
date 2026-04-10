@@ -6,6 +6,30 @@ extends RefCounted
 
 var actions: Dictionary  # ActionType -> BoxingAction
 
+const PIECE_VALUES := {
+	"P": 1,
+	"N": 1, # Knight is grouped with Pawn for LightPunch category
+	"B": 1, # Bishop grouped with Rook for HeavyPunch category
+	"R": 1,
+	"Q": 1,
+	"K": 1,
+}
+
+const PIECE_VALUE_MULTIPLIERS := {
+	"P": 1,
+	"N": 3,
+	"B": 3,
+	"R": 5,
+	"Q": 9,
+	"K": 1,
+}
+
+const PUNCH_BASE_DAMAGE := {
+	"LightPunch": 2,
+	"HeavyPunch": 3,
+	"SpecialUppercut": 4,
+}
+
 func _init() -> void:
 	actions = BoxingAction.create_all()
 
@@ -122,9 +146,67 @@ func resolve_player_attack(
 	# Fighter-specific solved puzzle bonus damage
 	damage += int(player_stats.get("solve_bonus_damage", 0))
 
+	# Training Camp cards (e.g., Heavy Hands)
+	damage = GameManager.modify_player_attack_damage(damage)
+
 	result.damage = maxi(1, damage)
 	result.messages.append("%s deals %d!" % [atk_act.name, result.damage])
 	return result
+
+func resolve_player_attack_from_piece(
+	moved_piece: String,
+	puzzle_solved: bool,
+	player_stats: Dictionary,
+) -> Dictionary:
+	var piece := str(moved_piece).to_upper()
+	var result := {
+		"damage": 0,
+		"action_name": "punch",
+		"messages": [],
+		"moved_piece": piece,
+		"punch_anim": _piece_to_punch_anim(piece),
+	}
+
+	if not puzzle_solved:
+		result.messages.append("[color=gray]Punch misses! (puzzle failed)[/color]")
+		return result
+
+	var base := int(PUNCH_BASE_DAMAGE.get(result.punch_anim, 2))
+	var piece_mult := int(PIECE_VALUE_MULTIPLIERS.get(piece, 1))
+	var damage_mod: float = float(player_stats.get("damage_mod", 1.0))
+	var total := int(float(base) * float(piece_mult) * damage_mod)
+
+	# Shop bonus and fight stacks are additive to base output (kept from old system)
+	total += int(player_stats.get("shop_base_damage_bonus", 0))
+	total += int(player_stats.get("endgame_damage_bonus", 0))
+
+	# Training Camp cards (multipliers/conditionals)
+	total = GameManager.modify_player_attack_damage(total)
+
+	result.damage = maxi(1, total)
+	result.messages.append("%s hits for %d!" % [_piece_display(piece), result.damage])
+	return result
+
+func _piece_to_punch_anim(piece: String) -> String:
+	match piece:
+		"P", "N":
+			return "LightPunch"
+		"B", "R":
+			return "HeavyPunch"
+		"Q":
+			return "SpecialUppercut"
+		_:
+			return "LightPunch"
+
+func _piece_display(piece: String) -> String:
+	match piece:
+		"P": return "Pawn"
+		"N": return "Knight"
+		"B": return "Bishop"
+		"R": return "Rook"
+		"Q": return "Queen"
+		"K": return "King"
+	return piece
 
 
 ## Resolve opponent attack with timing-based defense.

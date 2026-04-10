@@ -9,8 +9,16 @@ signal run_ended(won: bool)
 signal set_bonus_activated(bonus: Dictionary)
 
 # --- Enums ---
-enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, MOVE_UPGRADE, PERK_DRAFT, SHOP, RESULTS }
+enum GamePhase { MENU, FIGHTER_SELECT, TOURNAMENT, OPPONENT_REVEAL, CHESS, BOXING, MOVE_UPGRADE, PERK_DRAFT, SHOP, RESULTS, CUTSCENE }
 enum FightResult { IN_PROGRESS, PLAYER_WIN, PLAYER_LOSE }
+
+# --- Cutscene State ---
+## Key into data/story.json; set before calling change_phase(CUTSCENE).
+var pending_cutscene: String = ""
+## Phase to transition to once the cutscene ends.
+var post_cutscene_phase: GamePhase = GamePhase.TOURNAMENT
+## Cutscenes already seen this run; prevents double-triggers.
+var seen_cutscenes: Array[String] = []
 
 # --- Run State ---
 var current_phase: GamePhase = GamePhase.MENU
@@ -78,6 +86,14 @@ var has_puzzle_scout: bool = false          # Show puzzle theme before next figh
 var has_scouting_report: bool = false       # Show opponent gimmick before next fight
 var pending_perk_removal: bool = false      # Player needs to pick a perk to remove
 
+# --- Training Camp (Perk Cards) ---
+var owned_training_cards: Array[PerkCard] = []
+var training_card_used_flags: Dictionary = {} # {card_id: true} for one-time actives
+var last_chess_piece_moved: String = ""        # e.g. "Q", "R", "P"
+
+# --- Puzzle dedup within a run ---
+var _used_puzzle_ids: Array = []
+
 # --- Stats ---
 var stats: Dictionary = {}
 
@@ -90,8 +106,6 @@ var all_opponents: Array = []
 var all_fighters: Array = []
 var all_set_bonuses: Array = []
 var all_boss_perks: Array = []
-var all_shop_study: Array = []
-var all_shop_gym: Array = []
 
 func _ready() -> void:
 	_load_data()
@@ -105,8 +119,6 @@ func _load_data() -> void:
 	all_fighters = _load_json("res://data/fighters.json")
 	all_set_bonuses = _load_json("res://data/set_bonuses.json")
 	all_boss_perks = _load_json("res://data/boss_perks.json")
-	all_shop_study = _load_json("res://data/shop_study.json")
-	all_shop_gym = _load_json("res://data/shop_gym.json")
 
 func _load_json(path: String) -> Array:
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -133,6 +145,9 @@ func start_new_run(fighter: Dictionary) -> void:
 	current_round_in_fight = 0
 	run_tournament_number = SaveManager.tournament_number
 	run_elo_deltas.clear()
+	seen_cutscenes.clear()
+	pending_cutscene = ""
+	post_cutscene_phase = GamePhase.TOURNAMENT
 
 	player_fighter = fighter
 	player_max_hp = int(fighter.get("hp", 100))
@@ -147,6 +162,7 @@ func start_new_run(fighter: Dictionary) -> void:
 	# Reel system — 3 reels, each starts with 4x JAB
 	reel_symbols = ReelSystem.create_default_reels()
 
+	_used_puzzle_ids.clear()
 	active_perks.clear()
 	tag_counts.clear()
 	active_set_bonuses.clear()
@@ -170,6 +186,11 @@ func start_new_run(fighter: Dictionary) -> void:
 	has_puzzle_scout = false
 	has_scouting_report = false
 	pending_perk_removal = false
+
+	# Training Camp reset
+	owned_training_cards.clear()
+	training_card_used_flags.clear()
+	last_chess_piece_moved = ""
 
 	# Build initial fight order — the first 2 mandatory opponents (position 1 & 2)
 	fight_order.clear()
@@ -302,6 +323,9 @@ func start_fight() -> void:
 
 	# Reset boss perks for new fight
 	opponent_perks.clear()
+
+	# Pre-warm puzzle cache for this fight
+	PuzzleService.prefetch()
 
 	# Reset per-fight tactic state (endgame stacks, active tactics)
 	reset_fight_tactics()
@@ -531,7 +555,7 @@ func get_heat() -> float:
 # =============================================================================
 
 func get_chess_time_limit() -> float:
-	var base_time := 60.0
+	var base_time := 75.0
 	for perk in active_perks:
 		var effect: String = perk.get("effect", "")
 		if effect == "chess_time_bonus":
@@ -708,6 +732,24 @@ func _attack_token_to_action(token: String) -> BoxingAction.ActionType:
 # =============================================================================
 
 func get_puzzle_for_opponent() -> Dictionary:
+	# Primary: use PuzzleService (Lichess API with cache). Falls back to local JSON.
+	var puzzle := PuzzleService.get_puzzle_or_fallback()
+	_mark_puzzle_used(puzzle)
+	return puzzle
+
+## Mark a puzzle as used so it won't be selected again this run.
+func _mark_puzzle_used(puzzle: Dictionary) -> void:
+	var pid: String = puzzle.get("id", "")
+	if pid != "" and pid not in _used_puzzle_ids:
+		_used_puzzle_ids.append(pid)
+
+## Filter out puzzles already seen this run. If all are used, returns the full pool.
+func _filter_unused(pool: Array) -> Array:
+	var fresh := pool.filter(func(p): return p.get("id", "") not in _used_puzzle_ids)
+	return fresh if not fresh.is_empty() else pool
+
+## Legacy local puzzle selection — used as fallback by PuzzleService.
+func get_local_puzzle_for_opponent() -> Dictionary:
 	var difficulty: int = current_opponent.get("chess_difficulty", 1)
 	var pool: Array = []
 
@@ -721,8 +763,11 @@ func get_puzzle_for_opponent() -> Dictionary:
 	if pool.is_empty():
 		pool = all_puzzles_easy.duplicate()
 
+	pool = _filter_unused(pool)
 	pool.shuffle()
-	return pool[0]
+	var puzzle: Dictionary = pool[0]
+	_mark_puzzle_used(puzzle)
+	return puzzle
 
 ## Get a quick 1-move puzzle for boxing mini-puzzles. Prefers puzzles with
 ## single-move solutions so the player can solve them fast mid-fight.
@@ -737,6 +782,8 @@ func get_mini_puzzle() -> Dictionary:
 	else:
 		pool = all_puzzles_hard.duplicate()
 
+	pool = _filter_unused(pool)
+
 	# Prefer 1-move solutions for speed
 	var quick: Array = pool.filter(func(p): return p.get("solution", []).size() <= 2)
 	if not quick.is_empty():
@@ -746,7 +793,9 @@ func get_mini_puzzle() -> Dictionary:
 		pool = all_puzzles_easy.duplicate()
 
 	pool.shuffle()
-	return pool[0]
+	var puzzle: Dictionary = pool[0]
+	_mark_puzzle_used(puzzle)
+	return puzzle
 
 # =============================================================================
 # Draft Perks
@@ -778,6 +827,22 @@ func get_draft_choices(count: int = 3) -> Array:
 # =============================================================================
 
 func change_phase(new_phase: GamePhase) -> void:
+	# Check whether a story cutscene should play before this phase.
+	# Skip the check when we're already entering the CUTSCENE phase itself
+	# to prevent an infinite redirect loop.
+	if new_phase != GamePhase.CUTSCENE:
+		var cutscene_id := _get_cutscene_for_transition(new_phase)
+		if cutscene_id != "":
+			pending_cutscene    = cutscene_id
+			post_cutscene_phase = new_phase
+			new_phase           = GamePhase.CUTSCENE   # redirect to cutscene first
+		else:
+			# No cutscene for this transition — clear stale pending/post from earlier runs.
+			# Otherwise post_cutscene_phase can stay RESULTS and skipping a later cutscene
+			# calls change_phase(RESULTS) by mistake (tournament win).
+			pending_cutscene = ""
+			post_cutscene_phase = new_phase
+
 	current_phase = new_phase
 	phase_changed.emit(_phase_to_string(new_phase))
 
@@ -809,6 +874,8 @@ func _get_scene_for_phase(phase: GamePhase) -> String:
 			return "res://scenes/shop/shop.tscn"
 		GamePhase.RESULTS:
 			return "res://scenes/results/run_results.tscn"
+		GamePhase.CUTSCENE:
+			return "res://scenes/cutscene/cutscene.tscn"
 	return ""
 
 func _phase_to_string(phase: GamePhase) -> String:
@@ -823,7 +890,52 @@ func _phase_to_string(phase: GamePhase) -> String:
 		GamePhase.PERK_DRAFT: return "perk_draft"
 		GamePhase.SHOP: return "shop"
 		GamePhase.RESULTS: return "results"
+		GamePhase.CUTSCENE: return "cutscene"
 	return "unknown"
+
+# =============================================================================
+# Cutscene System
+# =============================================================================
+
+## Called by cutscene.gd when the player finishes or skips a cutscene.
+func mark_cutscene_seen(cutscene_id: String) -> void:
+	if not seen_cutscenes.has(cutscene_id):
+		seen_cutscenes.append(cutscene_id)
+	pending_cutscene = ""
+
+## Returns a story.json key if a cutscene should play before entering `phase`,
+## or an empty string if the transition should proceed normally.
+##
+## Trigger map (6 stages across a 4-fight run):
+##
+##   stage_1 — TOURNAMENT          : The Setup      (bedroom recruitment)
+##   stage_2 — BOXING, opponent 0  : The Dev Cameo  (locker room pre-fight 1)
+##   stage_3 — BOXING, opponent 1  : First Blood    (hallway post-fight 1 / pre-fight 2)
+##   stage_4 — BOXING, opponent 2  : The Rival      (press conference, Magnus appears)
+##   stage_5 — BOXING, opponent 3  : The Finals     (tunnel pre-championship)
+##   stage_6 — RESULTS, player won : The Champion   (victory celebration)
+##
+## Note: GamePhase.CHESS is defined but currently unused in the flow;
+##       chess puzzles run inline inside boxing_phase via mini_puzzle.gd.
+func _get_cutscene_for_transition(phase: GamePhase) -> String:
+	match phase:
+		GamePhase.TOURNAMENT:
+			if not seen_cutscenes.has("stage_1"):
+				return "stage_1"
+		GamePhase.BOXING:
+			if current_opponent_index == 0 and not seen_cutscenes.has("stage_2"):
+				return "stage_2"
+			if current_opponent_index == 1 and not seen_cutscenes.has("stage_3"):
+				return "stage_3"
+			if current_opponent_index == 2 and not seen_cutscenes.has("stage_4"):
+				return "stage_4"
+			if current_opponent_index == total_opponents - 1 and not seen_cutscenes.has("stage_5"):
+				return "stage_5"
+		GamePhase.RESULTS:
+			var won: bool = stats.get("fights_won", 0) >= total_opponents
+			if won and not seen_cutscenes.has("stage_6"):
+				return "stage_6"
+	return ""
 
 # =============================================================================
 # Shop & Tactic Cards
@@ -845,49 +957,75 @@ func award_fight_rep() -> Dictionary:
 	player_rep += breakdown.total
 	return breakdown
 
-## Get shop inventory for current visit.
-func get_shop_inventory() -> Dictionary:
-	return ShopSystem.generate_shop_inventory(
-		all_shop_study, all_shop_gym, tactic_hand, shop_purchase_counts
-	)
 
-## Attempt to purchase a shop item. Returns {success: bool, reason: String}.
-func purchase_shop_item(item: Dictionary) -> Dictionary:
-	var check := ShopSystem.can_purchase(item, player_rep, tactic_hand, shop_purchase_counts)
-	if not check.allowed:
-		return {"success": false, "reason": check.reason}
+# =============================================================================
+# Training Camp (Perk Cards)
+# =============================================================================
 
-	var cost: int = item.get("cost", 0)
-	var item_id: String = item.get("id", "")
-	var category: String = item.get("category", "")
-	var effect: String = item.get("effect", "")
-	var values: Dictionary = item.get("values", {})
+func get_training_cards_for_shop(count: int = 3) -> Array[PerkCard]:
+	var folder := "res://resources/perk_cards"
+	var cards: Array[PerkCard] = []
+	var dir := DirAccess.open(folder)
+	if dir == null:
+		return cards
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".tres"):
+			var path := "%s/%s" % [folder, file_name]
+			var res := load(path)
+			if res is PerkCard:
+				var card := res as PerkCard
+				if not has_training_card(card.id):
+					cards.append(card)
+		file_name = dir.get_next()
+	dir.list_dir_end()
 
-	# Deduct Rep
-	player_rep -= cost
+	cards.shuffle()
+	return cards.slice(0, mini(count, cards.size()))
 
-	# Track purchase count
-	shop_purchase_counts[item_id] = shop_purchase_counts.get(item_id, 0) + 1
+func has_training_card(card_id: String) -> bool:
+	for c in owned_training_cards:
+		if c != null and c.id == card_id:
+			return true
+	return false
 
-	# Apply based on category
-	match category:
-		"tactic_card":
-			TacticCardSystem.add_card(tactic_hand, item)
+func purchase_training_card(card: PerkCard) -> Dictionary:
+	if card == null:
+		return {"success": false, "reason": "Invalid card"}
+	if has_training_card(card.id):
+		return {"success": false, "reason": "Already owned"}
+	if player_rep < card.cost:
+		return {"success": false, "reason": "Not enough Gold (%d/%d)" % [player_rep, card.cost]}
 
-		"stat_upgrade":
-			_apply_stat_upgrade(effect, values)
-
-		"intel":
-			match effect:
-				"puzzle_scout": has_puzzle_scout = true
-				"scouting_report": has_scouting_report = true
-
-		"service":
-			match effect:
-				"draft_reroll": has_draft_reroll = true
-				"perk_removal": pending_perk_removal = true
-
+	player_rep -= card.cost
+	owned_training_cards.append(card)
+	card.on_purchase(self)
 	return {"success": true, "reason": ""}
+
+func modify_pressure_damage(base_damage: int) -> int:
+	var dmg := base_damage
+	for c in owned_training_cards:
+		if c != null:
+			dmg = c.modify_pressure_damage(dmg, self)
+	return dmg
+
+func modify_player_attack_damage(base_damage: int) -> int:
+	var dmg := base_damage
+	var ctx := {"last_chess_piece_moved": last_chess_piece_moved}
+	for c in owned_training_cards:
+		if c != null:
+			dmg = c.modify_player_attack_damage(dmg, ctx, self)
+	return dmg
+
+func set_last_chess_piece_moved(piece: String) -> void:
+	last_chess_piece_moved = piece
+
+func has_training_card_used(card_id: String) -> bool:
+	return bool(training_card_used_flags.get(card_id, false))
+
+func mark_training_card_used(card_id: String) -> void:
+	training_card_used_flags[card_id] = true
 
 func _apply_stat_upgrade(effect: String, values: Dictionary) -> void:
 	match effect:

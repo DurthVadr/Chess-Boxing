@@ -67,13 +67,13 @@ func run() -> String:
 	_generate_sequence()
 	_input_index = 0
 	_time_remaining = TIME_LIMIT
-	_active = false
+	_active = true
 	_resolved = false
-	_waiting = true
+	_waiting = false
 	_result = ""
 	_flash_timer = 0.0
 	_intro_timer = 0.0
-	_intro_scale = 0.0
+	_intro_scale = 1.0
 	set_process(true)
 	queue_redraw()
 	var result: String = await completed
@@ -86,13 +86,6 @@ func _generate_sequence() -> void:
 		_sequence.append(DIRECTIONS[randi() % DIRECTIONS.size()])
 
 func _process(delta: float) -> void:
-	if _waiting:
-		_intro_timer += delta
-		if _intro_scale < 1.0:
-			_intro_scale = minf(1.0, _intro_scale + delta * 4.5)
-		queue_redraw()
-		return
-
 	if _resolved:
 		_flash_timer -= delta
 		queue_redraw()
@@ -109,24 +102,6 @@ func _process(delta: float) -> void:
 		_resolve("failed_defense")
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _waiting:
-		# Any direction press starts the QTE
-		for dir in DIRECTIONS:
-			if event.is_action_pressed(DIR_ACTIONS[dir]):
-				get_viewport().set_input_as_handled()
-				_waiting = false
-				_active = true
-				# Also process this as the first input
-				if _sequence[_input_index] == dir:
-					_input_index += 1
-					queue_redraw()
-					if _input_index >= _sequence.size():
-						_resolve("perfect_defense")
-				else:
-					_resolve("failed_defense")
-				return
-		return
-
 	if not _active or _resolved:
 		return
 
@@ -222,12 +197,6 @@ func _draw() -> void:
 		# Arrow character
 		draw_string(ThemeDB.fallback_font, Vector2(ax - 14, ay + 10), arrow_str,
 			HORIZONTAL_ALIGNMENT_CENTER, 28, 30, col)
-
-	# ── Waiting: show "press a direction" ──
-	if _waiting:
-		var pulse := 0.6 + 0.4 * sin(_intro_timer * 4.0)
-		draw_string(ThemeDB.fallback_font, Vector2(ox, oy + h + 18),
-			"► Press the first arrow ◄", HORIZONTAL_ALIGNMENT_CENTER, w, 13, Color(READY_KEY, pulse))
 
 	# ── Result ──
 	if _resolved and _flash_timer > 0.0:

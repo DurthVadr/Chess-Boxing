@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StoneChinCard" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/training/cards/stone_chin_card.gd" id="1_1a0xx"]
+
+[resource]
+script = ExtResource("1_1a0xx")
+id = "stone_chin"
+card_name = "Stone Chin"
+description = "Pressure damage ticks deal 20% less damage."
+cost = 4
+

@@ -1,0 +1,362 @@
+/* Puzzle Web Editor — styles.css */
+
+:root {
+  --bg:      #0d0a14;
+  --bg2:     #1a1328;
+  --panel:   #181327;
+  --line:    #3a3150;
+  --text:    #e6e0d2;
+  --muted:   #9b93ab;
+  --gold:    #e5c04c;
+  --green:   #78d987;
+  --danger:  #d46a7d;
+  --blue:    #5fb0ff;
+  --sq-size: 60px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Segoe UI, Arial, sans-serif;
+  font-size: 14px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ============================================================
+   INPUTS / BUTTONS
+   ============================================================ */
+input, textarea, select, button {
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+textarea { resize: vertical; }
+button {
+  cursor: pointer;
+  font-weight: 600;
+  transition: border-color 0.1s;
+}
+button:hover { border-color: var(--gold); color: var(--gold); }
+button.primary { border-color: var(--gold); color: var(--gold); }
+button.danger  { color: var(--danger); }
+button.danger:hover { border-color: var(--danger); }
+button.active  { border-color: var(--danger); color: var(--danger); }
+button.small   { padding: 4px 10px; font-size: 12px; }
+button.tiny    { padding: 3px 7px; font-size: 11px; }
+
+.toolbar { display: flex; gap: 6px; }
+.top-gap { margin-top: 10px; }
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+.status {
+  font-size: 12px;
+  color: var(--muted);
+  min-height: 18px;
+  padding: 2px 0;
+}
+.status.dirty { color: #ffb36b; }
+.status.ok    { color: var(--green); }
+.status.err   { color: var(--danger); }
+
+/* ============================================================
+   LEFT PANEL — puzzle list
+   ============================================================ */
+.left-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  overflow: hidden;
+}
+.left-panel h1 {
+  color: var(--gold);
+  font-size: 20px;
+  letter-spacing: 0.5px;
+}
+.row { display: flex; flex-direction: column; gap: 3px; }
+label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+input, select { width: 100%; }
+
+.list-header {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 2px 0;
+}
+.puzzle-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #100d1c;
+}
+.puzzle-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #2b2440;
+  cursor: pointer;
+  transition: background 0.08s;
+}
+.puzzle-item:last-child { border-bottom: none; }
+.puzzle-item:hover { background: #1f1931; }
+.puzzle-item.active {
+  background: #2a203d;
+  border-left: 3px solid var(--gold);
+  padding-left: 7px;
+}
+.item-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.item-id { font-weight: 700; color: var(--gold); font-size: 13px; }
+.item-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.item-themes { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+
+.theme-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #2d2448;
+  color: var(--muted);
+  border: 1px solid #3a3060;
+}
+
+/* Difficulty badge — color coded */
+.diff-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.diff-1, .diff-2 { background: #1d3a28; color: #78d987; }
+.diff-3, .diff-4 { background: #3a3010; color: #e5c04c; }
+.diff-5, .diff-6, .diff-7 { background: #3a2010; color: #ff8c62; }
+.diff-8, .diff-9, .diff-10 { background: #3a1020; color: #d46a7d; }
+
+/* ============================================================
+   CENTER PANEL — board
+   ============================================================ */
+.board-panel {
+  flex-shrink: 0;
+  background: var(--bg);
+  border-right: 1px solid var(--line);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.board-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.puzzle-title {
+  font-weight: 700;
+  color: var(--gold);
+  font-size: 15px;
+}
+.board-actions { display: flex; gap: 6px; }
+
+/* Recording state — red outline on board */
+.board-panel.recording .board {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+/* Board + coordinates */
+.board-with-coords {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.rank-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 14px;
+  height: calc(var(--sq-size) * 8);
+  flex-shrink: 0;
+}
+.board-col { display: flex; flex-direction: column; gap: 2px; }
+.file-labels {
+  display: flex;
+  justify-content: space-around;
+  width: calc(var(--sq-size) * 8);
+}
+.coord-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  user-select: none;
+  line-height: 14px;
+}
+
+/* Chess board */
+.board {
+  width:  calc(var(--sq-size) * 8);
+  height: calc(var(--sq-size) * 8);
+  display: grid;
+  grid-template-columns: repeat(8, var(--sq-size));
+  grid-template-rows:    repeat(8, var(--sq-size));
+  border: 2px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.board-error {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  font-size: 14px;
+  padding: 20px;
+}
+
+.square {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  cursor: default;
+}
+.square.light { background: #56406a; }
+.square.dark  { background: #251d37; }
+
+/* Last-move highlight */
+.square.from { box-shadow: inset 0 0 0 3px rgba(95, 176, 255, 0.65); }
+.square.to   { box-shadow: inset 0 0 0 3px rgba(229, 192, 76, 0.75); }
+
+/* Selected piece */
+.square.selected { background: rgba(95, 176, 255, 0.45) !important; }
+
+/* Legal move targets */
+.square.legal-move { cursor: pointer; }
+.square.legal-capture {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 4px rgba(100, 220, 120, 0.65);
+}
+
+/* Legal move dot (shown on empty squares) */
+.legal-dot {
+  position: absolute;
+  width: 32%;
+  height: 32%;
+  border-radius: 50%;
+  background: rgba(100, 220, 120, 0.5);
+  pointer-events: none;
+}
+
+/* Chess piece */
+.piece {
+  font-size: 38px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+/* In record mode, show pointer on squares with pieces of active color */
+.board-panel.recording .square { cursor: pointer; }
+
+/* Board meta */
+.board-meta {
+  font-size: 12px;
+  color: var(--muted);
+  min-height: 18px;
+}
+
+/* Move badge list */
+.move-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 26px;
+}
+.move-badge {
+  padding: 2px 7px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: #5a5270;
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: normal;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+.move-badge:hover { border-color: var(--gold); color: var(--text); }
+.move-badge.played { color: var(--muted); }
+.move-badge.current { border-color: var(--gold); color: var(--gold); font-weight: 700; }
+
+/* Shortcut hint next to prev/next buttons */
+.shortcut-hint { font-size: 11px; color: #4a4260; align-self: center; }
+
+/* ============================================================
+   RIGHT PANEL — form
+   ============================================================ */
+.form-panel {
+  flex: 1;
+  min-width: 260px;
+  background: var(--panel);
+  padding: 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.form-panel h2 { color: var(--gold); font-size: 16px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 6px 10px;
+  align-items: start;
+}
+.form-grid label { padding-top: 8px; }
+.form-grid input, .form-grid textarea { width: 100%; }
+
+/* FEN row with copy button */
+.fen-row {
+  display: flex;
+  gap: 4px;
+}
+.fen-row input { flex: 1; }
+
+/* Shortcut help text */
+.shortcut-help {
+  font-size: 11px;
+  color: #4a4260;
+  line-height: 1.6;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  margin-top: auto;
+}
+.shortcut-help strong { color: var(--muted); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1200px) {
+  .left-panel { width: 240px; }
+  :root { --sq-size: 52px; }
+}
