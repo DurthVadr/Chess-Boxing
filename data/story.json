@@ -1,9 +1,13 @@
 {
   "portraits": {
-    "rookie": "res://assets/sprites/fighters/rookie_neutral.png",
-    "mentor": "res://assets/sprites/fighters/mentor_neutral.png",
-    "dev":    "res://assets/sprites/npc/dev_happy.png",
-    "magnus": "res://assets/sprites/opponents/magnus_neutral.png",
+    "rookie": "res://assets/sprites/fighters/rookie/rookie_sheet_tr.png",
+    "mentor": "res://assets/sprites/npc/coach_portrait.png",
+    "coach":  "res://assets/sprites/npc/coach_portrait.png",
+    "magnus": "res://assets/sprites/opponents/magnus/magnus_sheet_tr.png",
+    "vinnie": "res://assets/sprites/opponents/vinnie/vinnie_sheet_tr.png",
+    "dev":    "res://assets/sprites/npc/dev2_portrait.png",
+    "dev1":   "res://assets/sprites/npc/dev1_portrait.png",
+    "dev2":   "res://assets/sprites/npc/dev2_portrait.png",
     "system": "res://assets/sprites/ui/system_icon.png"
   },
 
@@ -12,6 +16,12 @@
     "location": "The Rookie's Messy Bedroom — 3 AM",
     "bg_color": "#0A0812",
     "accent_color": "#1A0E28",
+    "bg_image": "res://assets/sprites/backgrounds/cutscene1.png",
+    "hotspots": [
+      {"label": "DELIVERY GUY",  "url": "https://www.youtube.com/watch?v=4jYq4vzGKno", "rect": [0.00, 0.01, 0.13, 0.18]},
+      {"label": "ICARUS",        "url": "https://www.youtube.com/watch?v=sF05mBz9ybk", "rect": [0.27, 0.01, 0.43, 0.17]},
+      {"label": "SAVE THE POND", "url": "https://www.youtube.com/watch?v=HLbWQ0_G_BU", "rect": [0.43, 0.01, 0.57, 0.17]}
+    ],
     "lines": [
       {"speaker": "",       "text": "[color=#666666][i]A glowing CRT monitor illuminates a messy bedroom. Empty energy drink cans everywhere.[/i][/color]"},
       {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Knight to E5. Checkmate. Too easy...\""},
@@ -32,16 +42,20 @@
     "location": "Underground Locker Room",
     "bg_color": "#080C14",
     "accent_color": "#0E1A24",
+    "bg_image": "res://assets/sprites/backgrounds/cutscene2.png",
     "lines": [
       {"speaker": "",       "text": "[color=#666666][i]The Rookie nervously adjusts his boxing gloves. Mentor gives a pep talk.[/i][/color]"},
       {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Alright kid. This is it. Keep your guard up and your king safe.\""},
       {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"My stomach is doing flips...\""},
       {"speaker": "",       "text": "[color=#666666][i]Suddenly, two guys in hoodies walk into the room smiling brightly.[/i][/color]"},
-      {"speaker": "dev",    "text": "[color=#8DE56E][b]THE DEVS[/b][/color]   \"Hey! Thanks so much for playing our indie game!\""},
-      {"speaker": "dev",    "text": "[color=#8DE56E][b]THE DEVS[/b][/color]   \"We worked really hard on this chessboxing mechanic.\""},
+      {"speaker": "dev1",   "text": "[color=#8DE56E][b]DEV 1[/b][/color]   \"YO! Huge fan! Thanks so much for playing our indie game!\""},
+      {"speaker": "dev2",   "text": "[color=#6ED1B6][b]DEV 2[/b][/color]   \"He means it. We've been awake for, uh... I don't actually know.\""},
+      {"speaker": "dev1",   "text": "[color=#8DE56E][b]DEV 1[/b][/color]   \"The chessboxing mechanic? Dude. Pure genius. Our idea.\""},
+      {"speaker": "dev2",   "text": "[color=#6ED1B6][b]DEV 2[/b][/color]   \"...It was my idea.\""},
       {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Uh. Who are these guys?\""},
       {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Hey! You're in the wrong room, pals! Get outta here!\""},
-      {"speaker": "dev",    "text": "[color=#8DE56E][b]THE DEVS[/b][/color]   \"Oops. Sorry! Please leave a review on Steam!\""},
+      {"speaker": "dev1",   "text": "[color=#8DE56E][b]DEV 1[/b][/color]   \"Oops — sorry! Don't forget to leave us a review! Five stars please!\""},
+      {"speaker": "dev2",   "text": "[color=#6ED1B6][b]DEV 2[/b][/color]   \"Or three. Three is fine. We read them all.\""},
       {"speaker": "",       "text": "[color=#666666][i]The Devs scurry out of the room.[/i][/color]"},
       {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"...Weirdos. Anyway.\""},
       {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Go out there and do everything you can, son.\""}
@@ -53,6 +67,7 @@
     "location": "Arena Hallway",
     "bg_color": "#0D0508",
     "accent_color": "#200A10",
+    "bg_image": "res://assets/sprites/backgrounds/cutscene3.png",
     "lines": [
       {"speaker": "system", "text": "[color=#CCCCCC][b][ SYSTEM: ELO POINTS INCREASED +45 ][/b][/color]"},
       {"speaker": "rookie", "text": "[color=#E5C04C][b]THE ROOKIE[/b][/color]   \"Pant... pant... I think I swallowed my mouthguard.\""},
@@ -68,6 +83,7 @@
     "location": "Press Conference Room",
     "bg_color": "#0D0A02",
     "accent_color": "#1A1404",
+    "bg_image": "res://assets/sprites/backgrounds/cutscene4.png",
     "lines": [
       {"speaker": "",       "text": "[color=#666666][i]Camera flashes go off. Magnus blocks the doorway, towering over The Rookie.[/i][/color]"},
       {"speaker": "magnus", "text": "[color=#DC6E6E][b]MAGNUS[/b][/color]   \"So. You're the kid from the internet.\""},
@@ -84,6 +100,7 @@
     "location": "The Tunnel",
     "bg_color": "#080C14",
     "accent_color": "#0E1A24",
+    "bg_image": "res://assets/sprites/backgrounds/cutscene5.png",
     "lines": [
       {"speaker": "",       "text": "[color=#666666][i]The crowd is roaring outside. The championship match is about to begin.[/i][/color]"},
       {"speaker": "mentor", "text": "[color=#6EAEE5][b]MENTOR[/b][/color]   \"Listen to that crowd. They want blood.\""},
@@ -100,6 +117,7 @@
     "location": "The Ring",
     "bg_color": "#0D0A02",
     "accent_color": "#1A1404",
+    "bg_image": "res://assets/sprites/backgrounds/cutscene6.png",
     "lines": [
       {"speaker": "system", "text": "[color=#CCCCCC][b][ SYSTEM: ELO RATING — GRANDMASTER ][/b][/color]"},
       {"speaker": "",       "text": "[color=#666666][i]Confetti rains down. Magnus is staring at the chessboard in pure shock.[/i][/color]"},

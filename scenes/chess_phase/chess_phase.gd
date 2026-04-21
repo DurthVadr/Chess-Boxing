@@ -167,19 +167,28 @@ func _process(delta: float) -> void:
 # =============================================================================
 
 func _setup_opponent_portrait() -> void:
-	var sprite_sheet: String = GameManager.current_opponent.get("sprite_sheet", "")
-	if sprite_sheet != "":
-		var json_path := "res://data/sprite_frames/%s_frames.json" % sprite_sheet.get_file().get_basename()
-		if FileAccess.file_exists(json_path):
-			opponent_portrait.load_spritesheet_json(sprite_sheet, json_path)
-		else:
-			opponent_portrait.load_spritesheet(sprite_sheet, 4, 2)
+	var sprite_base: String = GameManager.current_opponent.get("sprite_base", "")
+	var opp_dir := "res://assets/sprites/opponents/%s/" % sprite_base
+	var opp_idle := opp_dir + "%s_sheet.png" % sprite_base
+	if sprite_base != "" and ResourceLoader.exists(opp_idle):
+		var hf: int = GameManager.current_opponent.get("sprite_hframes", 5)
+		opponent_portrait.load_anim_sheet("idle", opp_idle, hf, 2)
+		var punch_sheet := opp_dir + "%s_punch.png" % sprite_base
+		if ResourceLoader.exists(punch_sheet):
+			opponent_portrait.load_anim_sheet("punch", punch_sheet, hf, 2)
 	else:
-		var sprite_base: String = GameManager.current_opponent.get("sprite_base", "")
-		if sprite_base != "":
+		var sprite_sheet: String = GameManager.current_opponent.get("sprite_sheet", "")
+		if sprite_sheet != "":
+			var json_path := "res://data/sprite_frames/%s_frames.json" % sprite_sheet.get_file().get_basename()
+			if FileAccess.file_exists(json_path):
+				opponent_portrait.load_spritesheet_json(sprite_sheet, json_path)
+			else:
+				opponent_portrait.load_spritesheet(sprite_sheet, 4, 2)
+		elif sprite_base != "":
 			var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
 			if ResourceLoader.exists(tex_path):
 				opponent_portrait.texture = load(tex_path)
+	opponent_portrait.flip_h = true
 	# Loop a light jab animation throughout the puzzle
 	if opponent_portrait._animations.has("punch"):
 		opponent_portrait.play_anim("punch", true)

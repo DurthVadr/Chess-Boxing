@@ -134,9 +134,14 @@ func _make_fighter_card(fighter: Dictionary) -> PanelContainer:
 	if unlocked:
 		var sprite_base: String = fighter.get("sprite_base", "")
 		if sprite_base != "":
-			var tex_path := "res://assets/sprites/fighters/%s_neutral.png" % sprite_base
-			if ResourceLoader.exists(tex_path):
-				portrait.texture = load(tex_path)
+			var sheet_tr := "res://assets/sprites/fighters/%s/%s_sheet_tr.png" % [sprite_base, sprite_base]
+			var sheet_portrait := AnimatedPortrait.portrait_from_sheet(sheet_tr, 5, 2) if ResourceLoader.exists(sheet_tr) else null
+			if sheet_portrait:
+				portrait.texture = sheet_portrait
+			else:
+				var tex_path := "res://assets/sprites/fighters/%s_neutral.png" % sprite_base
+				if ResourceLoader.exists(tex_path):
+					portrait.texture = load(tex_path)
 	else:
 		portrait.modulate = Color(0.35, 0.35, 0.35, 1.0)
 	vbox.add_child(portrait)
@@ -276,11 +281,13 @@ func _update_detail_panel(fighter: Dictionary) -> void:
 		]
 		var sprite_base: String = fighter.get("sprite_base", "")
 		if sprite_base != "":
-			var tex_path := "res://assets/sprites/fighters/%s_neutral.png" % sprite_base
-			if ResourceLoader.exists(tex_path):
-				showcase_portrait.texture = load(tex_path)
+			var sheet_tr := "res://assets/sprites/fighters/%s/%s_sheet_tr.png" % [sprite_base, sprite_base]
+			var sheet_portrait := AnimatedPortrait.portrait_from_sheet(sheet_tr, 5, 2) if ResourceLoader.exists(sheet_tr) else null
+			if sheet_portrait:
+				showcase_portrait.texture = sheet_portrait
 			else:
-				showcase_portrait.texture = null
+				var tex_path := "res://assets/sprites/fighters/%s_neutral.png" % sprite_base
+				showcase_portrait.texture = load(tex_path) if ResourceLoader.exists(tex_path) else null
 		else:
 			showcase_portrait.texture = null
 	else:

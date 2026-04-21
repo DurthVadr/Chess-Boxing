@@ -37,21 +37,31 @@ func _create_path_card(opp: Dictionary) -> PanelContainer:
 
 	# Opponent portrait
 	var sprite_base: String = opp.get("sprite_base", "")
-	var sheet_path: String = opp.get("sprite_sheet", "")
 	var portrait := TextureRect.new()
 	portrait.custom_minimum_size = Vector2(96, 96)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	if sheet_path != "":
-		var sheet_portrait := AnimatedPortrait.portrait_from_sheet(sheet_path, 4, 2)
+	var folder_sheet_tr := "res://assets/sprites/opponents/%s/%s_sheet_tr.png" % [sprite_base, sprite_base]
+	var folder_sheet := "res://assets/sprites/opponents/%s/%s_sheet.png" % [sprite_base, sprite_base]
+	var sheet_to_use := folder_sheet_tr if ResourceLoader.exists(folder_sheet_tr) else folder_sheet
+	if sprite_base != "" and ResourceLoader.exists(sheet_to_use):
+		var hf: int = opp.get("sprite_hframes", 5)
+		var sheet_portrait := AnimatedPortrait.portrait_from_sheet(sheet_to_use, hf, 2)
 		if sheet_portrait:
 			portrait.texture = sheet_portrait
 			vbox.add_child(portrait)
-	elif sprite_base != "":
-		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
-		portrait.texture = load(tex_path)
-		vbox.add_child(portrait)
+	else:
+		var sheet_path: String = opp.get("sprite_sheet", "")
+		if sheet_path != "":
+			var sheet_portrait := AnimatedPortrait.portrait_from_sheet(sheet_path, 4, 2)
+			if sheet_portrait:
+				portrait.texture = sheet_portrait
+				vbox.add_child(portrait)
+		elif sprite_base != "":
+			var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
+			portrait.texture = load(tex_path)
+			vbox.add_child(portrait)
 
 	var archetype_label := Label.new()
 	archetype_label.text = opp.get("archetype", "").to_upper()

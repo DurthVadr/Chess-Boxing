@@ -3,9 +3,9 @@ shader_type canvas_item;
 // Rainbow-cycling HP bar fill.
 // Apply to the fill StyleBox of a ProgressBar or a ColorRect.
 
-uniform float cycle_speed : hint_range(0.1, 3.0) = 0.35;
-uniform float wave_frequency : hint_range(1.0, 10.0) = 3.0;
-uniform float glow_amount : hint_range(0.0, 1.0) = 0.2;
+uniform float cycle_speed : hint_range(0.1, 3.0) = 0.10;
+uniform float wave_frequency : hint_range(1.0, 10.0) = 1.5;
+uniform float glow_amount : hint_range(0.0, 1.0) = 0.08;
 
 vec3 hsv2rgb(vec3 c) {
 	vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0/3.0, 1.0/3.0)) * 6.0 - 3.0);

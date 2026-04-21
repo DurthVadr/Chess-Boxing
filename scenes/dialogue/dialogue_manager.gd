@@ -36,8 +36,11 @@ const PORTRAIT_WIDTH := 130.0
 const SPEAKER_COLORS := {
 	"rookie": Color(0.898, 0.753, 0.298),   # gold
 	"mentor": Color(0.431, 0.682, 0.898),   # blue
+	"coach":  Color(0.431, 0.682, 0.898),   # blue (alias for mentor)
 	"magnus": Color(0.863, 0.431, 0.431),   # red
-	"dev":    Color(0.553, 0.898, 0.431),   # green
+	"dev":    Color(0.431, 0.820, 0.710),   # teal (alias for dev2)
+	"dev1":   Color(0.553, 0.898, 0.431),   # green
+	"dev2":   Color(0.431, 0.820, 0.710),   # teal
 	"system": Color(0.700, 0.700, 0.700),   # grey
 }
 
@@ -46,10 +49,14 @@ const SPEAKER_COLORS := {
 # ---------------------------------------------------------------------------
 
 var portrait_paths: Dictionary = {
-	"rookie": "res://assets/sprites/fighters/rookie_neutral.png",
-	"mentor": "res://assets/sprites/fighters/mentor_neutral.png",
-	"magnus": "res://assets/sprites/opponents/magnus_neutral.png",
-	"dev":    "res://assets/sprites/npc/dev_happy.png",
+	"rookie": "res://assets/sprites/fighters/rookie/rookie_sheet_tr.png",
+	"mentor": "res://assets/sprites/npc/coach_portrait.png",
+	"coach":  "res://assets/sprites/npc/coach_portrait.png",
+	"magnus": "res://assets/sprites/opponents/magnus/magnus_sheet_tr.png",
+	"vinnie": "res://assets/sprites/opponents/vinnie/vinnie_sheet_tr.png",
+	"dev":    "res://assets/sprites/npc/dev2_portrait.png",
+	"dev1":   "res://assets/sprites/npc/dev1_portrait.png",
+	"dev2":   "res://assets/sprites/npc/dev2_portrait.png",
 	"system": "res://assets/sprites/ui/system_icon.png",
 }
 var _texture_cache: Dictionary = {}
@@ -371,7 +378,12 @@ func _load_portrait_texture(path: String) -> void:
 	if _texture_cache.has(path):
 		_portrait_rect.texture = _texture_cache[path]
 		return
-	var tex := load(path) as Texture2D
+	# Sheet files (e.g. *_sheet_tr.png): extract frame 0 so portraits don't render the whole sheet
+	var tex: Texture2D = null
+	if path.ends_with("_sheet_tr.png") or path.ends_with("_sheet.png"):
+		tex = AnimatedPortrait.portrait_from_sheet(path, 5, 2)
+	if tex == null:
+		tex = load(path) as Texture2D
 	if tex == null:
 		push_warning("DialogueManager: portrait not found at '%s'" % path)
 		_portrait_panel.visible = false
@@ -393,6 +405,8 @@ func _set_nameplate(speaker: String) -> void:
 		"mentor": "MENTOR",
 		"magnus": "MAGNUS",
 		"dev":    "THE DEVS",
+		"dev1":   "DEV 1",
+		"dev2":   "DEV 2",
 		"system": "SYSTEM",
 	}
 	_name_label.text = display_names.get(speaker, speaker.to_upper())

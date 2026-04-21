@@ -285,7 +285,7 @@ func play_back() -> void:
 # ── Dialogue ──────────────────────────────────────────────────────────────────
 func play_dialogue_tick() -> void:
 	## Tablet tap — softer than keystroke, called once per revealed character.
-	play_sfx(sfx_piece_move, -12.0, randf_range(0.80, 1.20))
+	play_sfx(sfx_piece_move, -2.0, randf_range(0.80, 1.20))
 
 func play_dialogue_advance() -> void:
 	## Spacebar press — called when the player acknowledges a line.

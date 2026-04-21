@@ -11,23 +11,23 @@ const CRT_SHADER_PATH := "res://assets/shaders/crt.gdshader"
 const PARTICLE_SHADER_PATH := "res://assets/shaders/particles.gdshader"
 # Default shader values at full intensity (1.0)
 const DEFAULTS := {
-	"scanline_intensity": 0.11,
-	"vignette_intensity": 0.26,
-	"aberration_amount": 0.85,
-	"curvature": 6.0,
-	"grain_amount": 0.035,
-	"bloom_amount": 0.10,
-	"flicker_amount": 0.006,
-	"phosphor_strength": 0.13,
-	# Psychedelic additions (subtle)
-	"scanline_warp": 1.8,
-	"fisheye": 0.06,
-	"bloom_glow": 0.2,
-	"color_bleed": 0.25,
+	"scanline_intensity": 0.24,   # stronger defined lines — classic CRT look
+	"vignette_intensity": 0.48,   # deep corner darkening — old monitor feel
+	"aberration_amount": 0.55,    # keep some RGB split, less hallucinogenic
+	"curvature": 9.0,             # more barrel = more retro tube screen
+	"grain_amount": 0.055,        # grainier = more analog/VHS
+	"bloom_amount": 0.06,         # less bloom = crisper, less dreamy
+	"flicker_amount": 0.014,      # more flicker = old phosphor tube aging
+	"phosphor_strength": 0.28,    # stronger RGB stripes = authentic phosphor
+	# Psychedelic params — dialed back
+	"scanline_warp": 0.3,         # nearly straight scanlines
+	"fisheye": 0.02,              # very slight extra barrel
+	"bloom_glow": 0.06,           # almost no soft haze
+	"color_bleed": 0.06,          # minimal channel bleed
 }
 # These don't scale — they stay constant
 const FIXED := {
-	"brightness": 1.04,
+	"brightness": 1.06,           # slight boost to compensate stronger scanlines
 }
 
 func _ready() -> void:

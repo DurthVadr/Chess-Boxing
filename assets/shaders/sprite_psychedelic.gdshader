@@ -3,14 +3,14 @@ shader_type canvas_item;
 // Psychedelic sprite effect: rainbow aura, chromatic aberration, ghost trail.
 // Apply to TextureRect or Sprite2D nodes.
 
-uniform float aura_size : hint_range(0.0, 0.05) = 0.015;
-uniform float aura_intensity : hint_range(0.0, 2.0) = 1.2;
-uniform float aberration_amount : hint_range(0.0, 0.02) = 0.006;
-uniform float aberration_pulse_speed : hint_range(0.0, 10.0) = 2.5;
-uniform float ghost_count : hint_range(0.0, 5.0) = 3.0;
-uniform float ghost_spacing : hint_range(0.001, 0.05) = 0.018;
-uniform float ghost_opacity : hint_range(0.0, 0.5) = 0.25;
-uniform float hue_shift_speed : hint_range(0.0, 3.0) = 0.8;
+uniform float aura_size : hint_range(0.0, 0.05) = 0.008;
+uniform float aura_intensity : hint_range(0.0, 2.0) = 0.45;
+uniform float aberration_amount : hint_range(0.0, 0.02) = 0.003;
+uniform float aberration_pulse_speed : hint_range(0.0, 10.0) = 1.2;
+uniform float ghost_count : hint_range(0.0, 5.0) = 1.0;
+uniform float ghost_spacing : hint_range(0.001, 0.05) = 0.012;
+uniform float ghost_opacity : hint_range(0.0, 0.5) = 0.10;
+uniform float hue_shift_speed : hint_range(0.0, 3.0) = 0.3;
 
 vec3 hsv2rgb(vec3 c) {
 	vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0/3.0, 1.0/3.0)) * 6.0 - 3.0);

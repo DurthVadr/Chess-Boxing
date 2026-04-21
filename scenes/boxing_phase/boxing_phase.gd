@@ -80,18 +80,32 @@ func _ready() -> void:
 	combo_label.text = ""
 	action_phase_label.text = ""
 
-	var sprite_sheet: String = GameManager.current_opponent.get("sprite_sheet", "")
-	if sprite_sheet != "":
-		var json_path := "res://data/sprite_frames/%s_frames.json" % sprite_sheet.get_file().get_basename()
-		if FileAccess.file_exists(json_path):
-			opponent_sprite.load_spritesheet_json(sprite_sheet, json_path)
-		else:
-			opponent_sprite.load_spritesheet(sprite_sheet, 4, 2)
+	var sprite_base: String = GameManager.current_opponent.get("sprite_base", "")
+	var opp_dir := "res://assets/sprites/opponents/%s/" % sprite_base
+	var opp_idle := opp_dir + "%s_sheet.png" % sprite_base
+	if sprite_base != "" and ResourceLoader.exists(opp_idle):
+		var hf: int = GameManager.current_opponent.get("sprite_hframes", 5)
+		opponent_sprite.load_anim_sheet("idle", opp_idle, hf, 2)
+		for anim in ["punch", "hitted", "knockout"]:
+			var anim_sheet := opp_dir + "%s_%s.png" % [sprite_base, anim]
+			if ResourceLoader.exists(anim_sheet):
+				opponent_sprite.load_anim_sheet(anim, anim_sheet, hf, 2)
+		opponent_sprite.set_anim_fps("punch", 20.0)
+		opponent_sprite.set_anim_fps("hitted", 18.0)
+		opponent_sprite.set_anim_fps("knockout", 8.0)
 	else:
-		var sprite_base: String = GameManager.current_opponent.get("sprite_base", "")
-		if sprite_base != "":
+		var sprite_sheet: String = GameManager.current_opponent.get("sprite_sheet", "")
+		if sprite_sheet != "":
+			var json_path := "res://data/sprite_frames/%s_frames.json" % sprite_sheet.get_file().get_basename()
+			if FileAccess.file_exists(json_path):
+				opponent_sprite.load_spritesheet_json(sprite_sheet, json_path)
+			else:
+				opponent_sprite.load_spritesheet(sprite_sheet, 4, 2)
+		elif sprite_base != "":
 			var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
-			opponent_sprite.texture = load(tex_path)
+			if ResourceLoader.exists(tex_path):
+				opponent_sprite.texture = load(tex_path)
+	opponent_sprite.flip_h = true
 
 	# Load player sprite — use per-animation sheets if available, else fall back to folder frames
 	var player_sprite_base: String = GameManager.player_fighter.get("sprite_base", "rookie")
@@ -637,6 +651,9 @@ func _apply_piece_punch_damage(result: Dictionary, puzzle_solved: bool) -> void:
 	GameManager.opponent_hp = maxi(0, GameManager.opponent_hp - damage)
 	AudioManager.play_punch("jab", damage >= 18)
 
+	if opponent_sprite.has_anim("hitted"):
+		opponent_sprite.play_anim("hitted", false)
+
 	var heat := GameManager.get_heat()
 	var is_heated := heat >= 2.5
 	var hit_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
@@ -917,6 +934,8 @@ func _apply_player_attack_damage(result: Dictionary, puzzle_solved: bool, qte_re
 	if damage > 0:
 		var action_name: String = result.get("action_name", "jab")
 		AudioManager.play_punch(action_name, is_big_hit)
+		if opponent_sprite.has_anim("hitted"):
+			opponent_sprite.play_anim("hitted", false)
 		Juice.hit_lunge(player_sprite, 1.0, 15.0, 0.18)
 		var shake := 12.0 if is_big_hit else 6.0
 		Juice.screen_shake(opponent_sprite, shake, 0.16)
@@ -1122,6 +1141,10 @@ func _on_ko(winner: String) -> void:
 		var ko_pos := opponent_sprite.global_position + opponent_sprite.size * 0.5
 		Juice.impact_burst(self, ko_pos, Color(1.0, 0.85, 0.2, 1.0), 80.0)
 		Juice.flash(opponent_sprite, Color(1, 0.2, 0.2), 0.3)
+		if opponent_sprite.has_anim("knockout"):
+			opponent_sprite.play_anim("knockout", false, func() -> void:
+				opponent_sprite.freeze_anim("knockout")
+			)
 		# Escalating confetti: intensity 2–6 across the bracket + banner / gold flash / CRT bump
 		var confetti_level: int = clampi(GameManager.current_opponent_index + 2, 2, 6)
 		Juice.confetti(self, confetti_level)
@@ -1138,9 +1161,8 @@ func _on_ko(winner: String) -> void:
 		Juice.screen_shake(self, 20.0, 0.5)
 		var ko_pos := player_sprite.global_position + player_sprite.size * 0.5
 		Juice.impact_burst(self, ko_pos, Color(0.9, 0.2, 0.2, 1.0), 80.0)
-		player_sprite.play_anim("knockout", false, func():
-			player_sprite.set_frame(9)
-			player_sprite.stop()
+		player_sprite.play_anim("knockout", false, func() -> void:
+			player_sprite.freeze_anim("knockout")
 		)
 		Juice.flash(player_sprite, Color(1, 0.2, 0.2), 0.3)
 

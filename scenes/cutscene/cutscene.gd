@@ -20,6 +20,8 @@ const STORY_PATH := "res://data/story.json"
 # ---------------------------------------------------------------------------
 
 var _bg: ColorRect
+var _bg_image: TextureRect     # optional full-screen scene illustration
+var _hotspot_buttons: Array[Control] = []
 var _accent_bar: ColorRect     # 4 px gold stripe at the very top
 var _title_label: Label
 var _location_label: Label
@@ -71,6 +73,22 @@ func _build_ui() -> void:
 	_bg.color = Color(0.04, 0.02, 0.07)   # overwritten per-stage
 	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bg)
+
+	# Full-screen scene illustration (hidden until a bg_image is set in stage data)
+	_bg_image = TextureRect.new()
+	_bg_image.anchor_left   = 0.0
+	_bg_image.anchor_top    = 0.0
+	_bg_image.anchor_right  = 1.0
+	_bg_image.anchor_bottom = 1.0
+	_bg_image.offset_left   = 0.0
+	_bg_image.offset_top    = 0.0
+	_bg_image.offset_right  = 0.0
+	_bg_image.offset_bottom = 0.0
+	_bg_image.stretch_mode  = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_bg_image.expand_mode   = TextureRect.EXPAND_IGNORE_SIZE
+	_bg_image.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	_bg_image.hide()
+	add_child(_bg_image)
 
 	# 4 px accent stripe at the top
 	_accent_bar = ColorRect.new()
@@ -166,6 +184,19 @@ func _load_and_start() -> void:
 	if stage.has("accent_color"):
 		_accent_bar.color = Color(stage["accent_color"])
 
+	# Optional background illustration
+	if stage.has("bg_image"):
+		var img_path: String = stage["bg_image"]
+		if ResourceLoader.exists(img_path):
+			_bg_image.texture = load(img_path)
+			_bg_image.show()
+		else:
+			push_warning("Cutscene: bg_image not found: %s" % img_path)
+
+	# Optional clickable hotspots (e.g. posters on the wall)
+	if stage.has("hotspots"):
+		_build_hotspots(stage["hotspots"])
+
 	_title_label.text    = stage.get("title",    "").to_upper()
 	_location_label.text = stage.get("location", "")
 
@@ -209,6 +240,7 @@ func _finish_cutscene() -> void:
 
 	# Force-close the dialogue box so it doesn't bleed into the next scene
 	DialogueManager.force_close()
+	_clear_hotspots()
 
 	# Record this cutscene as seen BEFORE calling change_phase so that
 	# _get_cutscene_for_transition won't re-trigger the same cutscene.
@@ -221,6 +253,60 @@ func _finish_cutscene() -> void:
 	tw.tween_callback(func() -> void:
 		GameManager.change_phase(next_phase)
 	)
+
+
+func _build_hotspots(hotspots: Array) -> void:
+	for h in hotspots:
+		if not (h is Dictionary):
+			continue
+		var rect_pct: Array = h.get("rect", [])
+		if rect_pct.size() != 4:
+			continue
+		var url: String  = h.get("url",   "")
+		var label: String = h.get("label", "")
+
+		# Invisible button anchored by percentage of the viewport
+		var btn := Button.new()
+		btn.anchor_left   = rect_pct[0]
+		btn.anchor_top    = rect_pct[1]
+		btn.anchor_right  = rect_pct[2]
+		btn.anchor_bottom = rect_pct[3]
+		btn.offset_left   = 0.0
+		btn.offset_top    = 0.0
+		btn.offset_right  = 0.0
+		btn.offset_bottom = 0.0
+		btn.flat          = true
+		btn.focus_mode    = Control.FOCUS_NONE   # don't steal focus — spacebar must not retrigger
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		btn.tooltip_text  = label
+		# Transparent normal style, gold border on hover
+		var style_normal := StyleBoxEmpty.new()
+		btn.add_theme_stylebox_override("normal",   style_normal)
+		btn.add_theme_stylebox_override("focus",    style_normal)
+		btn.add_theme_stylebox_override("disabled", style_normal)
+		var style_hover := StyleBoxFlat.new()
+		style_hover.bg_color = Color(0.898, 0.753, 0.298, 0.12)
+		style_hover.set_border_width_all(2)
+		style_hover.border_color = Color(0.898, 0.753, 0.298, 0.8)
+		style_hover.set_corner_radius_all(3)
+		btn.add_theme_stylebox_override("hover",   style_hover)
+		var style_pressed := StyleBoxFlat.new()
+		style_pressed.bg_color = Color(0.898, 0.753, 0.298, 0.25)
+		style_pressed.set_border_width_all(2)
+		style_pressed.border_color = Color(0.898, 0.753, 0.298, 1.0)
+		style_pressed.set_corner_radius_all(3)
+		btn.add_theme_stylebox_override("pressed", style_pressed)
+
+		btn.z_index = 10
+		btn.pressed.connect(func() -> void: OS.shell_open(url))
+		add_child(btn)
+		_hotspot_buttons.append(btn)
+
+
+func _clear_hotspots() -> void:
+	for btn in _hotspot_buttons:
+		btn.queue_free()
+	_hotspot_buttons.clear()
 
 
 func debug_skip() -> void:

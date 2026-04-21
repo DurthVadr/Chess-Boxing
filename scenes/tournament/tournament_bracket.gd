@@ -439,6 +439,16 @@ func _get_current_opponent(opp_idx: int) -> Dictionary:
 func _load_portrait(sprite_base: String, opponent_data: Dictionary = {}) -> Texture2D:
 	if sprite_base == "":
 		return null
+	# Prefer transparent (_tr) portrait sheet; fall back to opaque sheet
+	var folder_sheet_tr := "res://assets/sprites/opponents/%s/%s_sheet_tr.png" % [sprite_base, sprite_base]
+	var folder_sheet := "res://assets/sprites/opponents/%s/%s_sheet.png" % [sprite_base, sprite_base]
+	var sheet_to_use := folder_sheet_tr if ResourceLoader.exists(folder_sheet_tr) else folder_sheet
+	if ResourceLoader.exists(sheet_to_use):
+		var hf: int = opponent_data.get("sprite_hframes", 5)
+		var portrait := AnimatedPortrait.portrait_from_sheet(sheet_to_use, hf, 2)
+		if portrait:
+			return portrait
+	# Legacy: single sprite_sheet field
 	var sheet_path: String = opponent_data.get("sprite_sheet", "")
 	if sheet_path != "":
 		var portrait := AnimatedPortrait.portrait_from_sheet(sheet_path, 4, 2)

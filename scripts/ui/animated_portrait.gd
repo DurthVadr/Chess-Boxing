@@ -232,6 +232,22 @@ func set_anim_fps(anim_name: String, anim_fps: float) -> void:
 	_anim_fps[anim_name] = anim_fps
 
 
+## Returns true if a named animation has been registered.
+func has_anim(anim_name: String) -> bool:
+	return _animations.has(anim_name)
+
+
+## Stop on the last frame of a named animation.
+## Designed to be called from an on_finished callback so the correct sheet atlas is restored.
+func freeze_anim(anim_name: String) -> void:
+	if _anim_sheets.has(anim_name):
+		_atlas_frames = _anim_sheets[anim_name]
+	var seq: Array = _animations.get(anim_name, [])
+	if not seq.is_empty():
+		set_frame(seq.back())
+	stop()
+
+
 ## Get frame 0 as a texture (for portraits/thumbnails)
 func get_portrait_frame() -> Texture2D:
 	if not _atlas_frames.is_empty():

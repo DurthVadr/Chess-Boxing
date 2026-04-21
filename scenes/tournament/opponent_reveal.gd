@@ -37,9 +37,14 @@ func _ready() -> void:
 
 	var player_sprite: String = player.get("sprite_base", "")
 	if player_sprite != "":
-		var player_tex := "res://assets/sprites/fighters/%s_neutral.png" % player_sprite
-		if ResourceLoader.exists(player_tex):
-			player_portrait.texture = load(player_tex)
+		var player_sheet_tr := "res://assets/sprites/fighters/%s/%s_sheet_tr.png" % [player_sprite, player_sprite]
+		var player_sheet_portrait := AnimatedPortrait.portrait_from_sheet(player_sheet_tr, 5, 2) if ResourceLoader.exists(player_sheet_tr) else null
+		if player_sheet_portrait:
+			player_portrait.texture = player_sheet_portrait
+		else:
+			var player_tex := "res://assets/sprites/fighters/%s_neutral.png" % player_sprite
+			if ResourceLoader.exists(player_tex):
+				player_portrait.texture = load(player_tex)
 
 	# ── Opponent info ──
 	opponent_name_label.text = opp.get("name", "???")
@@ -54,16 +59,26 @@ func _ready() -> void:
 	else:
 		gimmick_label.visible = false
 
+	opponent_portrait.flip_h = true   # face the player on the VS screen
 	var sprite_base: String = opp.get("sprite_base", "")
-	var sheet_path: String = opp.get("sprite_sheet", "")
-	if sheet_path != "":
-		var portrait := AnimatedPortrait.portrait_from_sheet(sheet_path, 4, 2)
+	var folder_sheet_tr := "res://assets/sprites/opponents/%s/%s_sheet_tr.png" % [sprite_base, sprite_base]
+	var folder_sheet := "res://assets/sprites/opponents/%s/%s_sheet.png" % [sprite_base, sprite_base]
+	var sheet_to_use := folder_sheet_tr if ResourceLoader.exists(folder_sheet_tr) else folder_sheet
+	if sprite_base != "" and ResourceLoader.exists(sheet_to_use):
+		var hf: int = opp.get("sprite_hframes", 5)
+		var portrait := AnimatedPortrait.portrait_from_sheet(sheet_to_use, hf, 2)
 		if portrait:
 			opponent_portrait.texture = portrait
-	elif sprite_base != "":
-		var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
-		if ResourceLoader.exists(tex_path):
-			opponent_portrait.texture = load(tex_path)
+	else:
+		var sheet_path: String = opp.get("sprite_sheet", "")
+		if sheet_path != "":
+			var portrait := AnimatedPortrait.portrait_from_sheet(sheet_path, 4, 2)
+			if portrait:
+				opponent_portrait.texture = portrait
+		elif sprite_base != "":
+			var tex_path := "res://assets/sprites/opponents/%s_neutral.png" % sprite_base
+			if ResourceLoader.exists(tex_path):
+				opponent_portrait.texture = load(tex_path)
 
 	_animate_reveal()
 

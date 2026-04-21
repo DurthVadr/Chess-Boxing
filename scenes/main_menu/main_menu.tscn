@@ -2,8 +2,20 @@
 
 [ext_resource type="Script" uid="uid://b7iuf36rcr52l" path="res://scenes/main_menu/main_menu.gd" id="1"]
 [ext_resource type="Theme" uid="uid://c0qkujurio6j0" path="res://assets/theme.tres" id="3"]
-[ext_resource type="Shader" path="res://assets/shaders/scrolling_bg.gdshader" id="4"]
-[ext_resource type="Shader" path="res://assets/shaders/title_gradient.gdshader" id="5"]
+[ext_resource type="Shader" uid="uid://de73kt0vibsx5" path="res://assets/shaders/scrolling_bg.gdshader" id="4"]
+[ext_resource type="Shader" uid="uid://bu3e3cgbhprm4" path="res://assets/shaders/title_gradient.gdshader" id="5"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_scroll"]
+shader = ExtResource("4")
+shader_parameter/speed = 0.04
+shader_parameter/cell_size = 0.055
+shader_parameter/color_a = Color(0.07, 0.05, 0.11, 0.7)
+shader_parameter/color_b = Color(0.04, 0.03, 0.07, 0.7)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_title"]
+shader = ExtResource("5")
+shader_parameter/top_color = Color(1, 0.98, 0.9, 1)
+shader_parameter/bottom_color = Color(0.9, 0.75, 0.25, 1)
 
 [sub_resource type="StyleBoxFlat" id="menu_btn_normal"]
 content_margin_left = 20.0
@@ -56,18 +68,6 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_scroll"]
-shader = ExtResource("4")
-shader_parameter/speed = 0.04
-shader_parameter/cell_size = 0.055
-shader_parameter/color_a = Color(0.07, 0.05, 0.11, 0.7)
-shader_parameter/color_b = Color(0.04, 0.03, 0.07, 0.7)
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_title"]
-shader = ExtResource("5")
-shader_parameter/top_color = Color(1.0, 0.98, 0.9, 1.0)
-shader_parameter/bottom_color = Color(0.9, 0.75, 0.25, 1.0)
-
 [node name="MainMenu" type="Control" unique_id=762640435]
 layout_mode = 3
 anchors_preset = 15
@@ -87,15 +87,14 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.05, 0.04, 0.08, 1)
 
-[node name="ScrollingBg" type="ColorRect" parent="."]
+[node name="ScrollingBg" type="ColorRect" parent="." unique_id=1230099415]
+material = SubResource("ShaderMaterial_scroll")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-material = SubResource("ShaderMaterial_scroll")
-color = Color(1, 1, 1, 1)
 
 [node name="VBox" type="VBoxContainer" parent="." unique_id=352863820]
 layout_mode = 1
@@ -114,10 +113,9 @@ theme_override_constants/separation = 10
 
 [node name="TitleLabel" type="Label" parent="VBox" unique_id=2145350273]
 unique_name_in_owner = true
-layout_mode = 2
 material = SubResource("ShaderMaterial_title")
+layout_mode = 2
 theme_override_colors/font_color = Color(0.97, 0.95, 0.88, 1)
-theme_override_colors/shadow_color = Color(0.0, 0.0, 0.0, 0.9)
 theme_override_constants/shadow_offset_x = 5
 theme_override_constants/shadow_offset_y = 6
 theme_override_font_sizes/font_size = 84
@@ -191,10 +189,9 @@ text = "QUIT"
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = -100.0
-offset_top = 0.0
 offset_right = -60.0
 offset_bottom = 36.0
-theme_override_colors/font_color = Color(0.9, 0.75, 0.25, 1.0)
+theme_override_colors/font_color = Color(0.9, 0.75, 0.25, 1)
 theme_override_font_sizes/font_size = 28
 text = "►"
 

@@ -5,9 +5,9 @@ shader_type canvas_item;
 
 uniform vec4 neon_color : source_color = vec4(0.9, 0.2, 1.0, 1.0);
 uniform float glow_radius : hint_range(0.0, 0.03) = 0.012;
-uniform float glow_intensity : hint_range(0.0, 4.0) = 2.0;
-uniform float pulse_speed : hint_range(0.0, 5.0) = 1.8;
-uniform float pulse_amount : hint_range(0.0, 0.5) = 0.2;
+uniform float glow_intensity : hint_range(0.0, 4.0) = 1.3;
+uniform float pulse_speed : hint_range(0.0, 5.0) = 0.5;
+uniform float pulse_amount : hint_range(0.0, 0.5) = 0.06;
 uniform float hue_shift : hint_range(0.0, 1.0) = 0.0;
 uniform bool rainbow_mode = false;
 
